@@ -1,0 +1,213 @@
+import type { StageTemplate } from "@/types/game";
+
+/** ステージ生成の元になるシナリオテンプレート集 */
+export const STAGE_TEMPLATES: StageTemplate[] = [
+  {
+    id: "late",
+    title: "遅刻",
+    category: "basic",
+    severity: 1,
+    mistake: {
+      default: "田中が朝の会議に20分遅刻した",
+      lowAwareness: "田中がまた朝の会議に遅刻してしまった",
+      highAwareness: "田中が会議開始5分後に入室した（改善中だがまだ遅刻）",
+    },
+    npcLine: {
+      normal: "すみません、電車が遅れていて……",
+      anxious: "本当にすみません……また遅刻してしまって……",
+      defensive: "電車のせいで仕方なかったんです……",
+      motivated: "すみません、次は必ず早めに出ます。",
+    },
+    preferWhen: { awarenessMax: 50 },
+  },
+  {
+    id: "deadline",
+    title: "提出期限忘れ",
+    category: "basic",
+    severity: 2,
+    mistake: {
+      default: "田中が大事な資料の提出期限を忘れた",
+      lowAwareness: "田中が提出期限を完全に忘れていた",
+      highAwareness: "田中が期限前日に気づいたが、完成間に合わず提出できなかった",
+    },
+    npcLine: {
+      normal: "今日までだと勘違いしていました……",
+      anxious: "申し訳ないです、カレンダーの確認を怠りました……",
+      defensive: "忙しくて確認する暇がなかったんです……",
+      motivated: "期限管理の方法を見直したいと思います……",
+    },
+    preferWhen: { awarenessMax: 60 },
+  },
+  {
+    id: "email_typo",
+    title: "メール誤送信",
+    category: "basic",
+    severity: 2,
+    mistake: {
+      default: "田中がお客様に誤字だらけのメールを送ってしまった",
+      highAwareness: "田中が確認を怠り、お客様宛メールに誤字が残った",
+    },
+    npcLine: {
+      normal: "急いでいて確認不足でした……",
+      anxious: "送る前にもう一度見直すべきでした……",
+      defensive: "時間がなくて仕方なく送ったんです……",
+      motivated: "ダブルチェックの手順を作ります……",
+    },
+    preferWhen: {},
+  },
+  {
+    id: "no_report",
+    title: "報連相不足",
+    category: "communication",
+    severity: 2,
+    mistake: {
+      default: "田中がトラブルを上司に報告しなかった",
+      lowAwareness: "田中が問題が起きても報告せず、自力で対処しようとした",
+      highAwareness: "田中が軽微なトラブルを報告し忘れた",
+    },
+    npcLine: {
+      normal: "自分で何とかできると思っていました……",
+      anxious: "報告すべきだったのに、怖くて言えませんでした……",
+      defensive: "大した問題じゃないと思ったんです……",
+      motivated: "次からは早めに相談します……",
+    },
+    preferWhen: { awarenessMax: 55 },
+  },
+  {
+    id: "repeat_mistake",
+    title: "同じミスの繰り返し",
+    category: "repeat",
+    severity: 2,
+    mistake: {
+      default: "田中が同じ入力ミスを3回繰り返した",
+      lowAwareness: "田中が以前指摘されたのと同じミスをまた犯した",
+      highAwareness: "田中がチェックリストを作ったが、同じ箇所で再びミスした",
+    },
+    npcLine: {
+      normal: "気をつけていたつもりなんですが……",
+      anxious: "何度注意されても同じミスをしてしまって……",
+      defensive: "今回は状況が違ったんです……",
+      motivated: "チェック方法を変えてみます……",
+    },
+    preferWhen: { awarenessMax: 45 },
+  },
+  {
+    id: "data_delete",
+    title: "重要データ削除",
+    category: "severe",
+    severity: 3,
+    mistake: {
+      default: "田中が共有フォルダの重要なデータを誤って削除した",
+      highAwareness: "田中が操作ミスで共有フォルダのデータを削除してしまった",
+    },
+    npcLine: {
+      normal: "バックアップがあると思っていました……",
+      anxious: "大変申し訳ありません、すぐに復旧方法を調べます……",
+      defensive: "UIが紛らわしかったんです……",
+      motivated: "削除前の確認手順を必ず守ります……",
+    },
+    preferWhen: { mentalHealthMax: 50, awarenessMin: 40 },
+  },
+  {
+    id: "excuse",
+    title: "言い訳",
+    category: "attitude",
+    severity: 2,
+    mistake: {
+      default: "田中がミスをしたが、他の人のせいにしている",
+      lowAwareness: "田中が自分のミスを認めず、チームメンバーのせいにした",
+    },
+    npcLine: {
+      normal: "でも、これは自分だけの責任じゃないと思います……",
+      anxious: "怖くて言いたくないんですが……本当は自分にも原因があります……",
+      defensive: "だって、指示が曖昧だったんです……",
+      motivated: "自分の落ち度も認めて改善したいです……",
+    },
+    preferWhen: { mentalHealthMax: 45 },
+  },
+  {
+    id: "attendance_slip",
+    title: "勤怠記録ミス",
+    category: "basic",
+    severity: 1,
+    mistake: {
+      default: "田中が勤怠システムへの打刻を2日連続で忘れた",
+      highAwareness: "田中が残業で疲れ、打刻確認を忘れた",
+    },
+    npcLine: {
+      normal: "忙しくて打刻を忘れてしまいました……",
+      anxious: "また忘れてしまって、本当に申し訳ないです……",
+      defensive: "業務が忙しすぎるんです……",
+      motivated: "リマインダーを設定します……",
+    },
+    preferWhen: { mentalHealthMax: 55 },
+  },
+  {
+    id: "meeting_unprepared",
+    title: "会議準備不足",
+    category: "communication",
+    severity: 2,
+    mistake: {
+      default: "田中がクライアント会議の資料を準備せずに出席した",
+      lowAwareness: "田中が会議の重要性を理解せず、準備なしで臨んだ",
+      highAwareness: "田中が準備時間が足りず、資料が未完成だった",
+    },
+    npcLine: {
+      normal: "時間が足りなくて準備できませんでした……",
+      anxious: "準備不足で迷惑をかけてしまいました……",
+      defensive: "急に会議が入ったんです……",
+      motivated: "前日までに準備する習慣をつけます……",
+    },
+    preferWhen: { awarenessMax: 50 },
+  },
+  {
+    id: "burnout_sign",
+    title: "集中力低下",
+    category: "attitude",
+    severity: 2,
+    mistake: {
+      default: "田中が午後の作業中、同じファイルを何度も間違えて保存した",
+    },
+    npcLine: {
+      normal: "最近、少し集中できなくて……",
+      anxious: "頭が回らなくて、申し訳ないです……",
+      defensive: "体調が優れないだけで……",
+      motivated: "休息を取ってから再挑戦します……",
+    },
+    preferWhen: { mentalHealthMax: 35 },
+  },
+  {
+    id: "minor_slip",
+    title: "軽微なミス",
+    category: "basic",
+    severity: 1,
+    mistake: {
+      default: "田中が社内連絡の宛先を1件間違えた",
+      highAwareness: "田中が確認したが、最終チェックで宛先を見落とした",
+    },
+    npcLine: {
+      normal: "すぐに訂正メールを送りました……",
+      anxious: "気をつけていたのに、またミスを……",
+      defensive: "リストが分かりにくかったんです……",
+      motivated: "送信前チェックリストを使います……",
+    },
+    preferWhen: { awarenessMin: 55, mentalHealthMin: 50 },
+  },
+  {
+    id: "conflict_avoidance",
+    title: "問題の先延ばし",
+    category: "communication",
+    severity: 2,
+    mistake: {
+      default: "田中がクレーム対応を1週間放置していた",
+      lowAwareness: "田中が面倒な案件を後回しにし続けた",
+    },
+    npcLine: {
+      normal: "どう対応すればいいか分からなくて……",
+      anxious: "怖くて触れられなくて……本当にすみません……",
+      defensive: "他の仕事も忙しかったんです……",
+      motivated: "早めに相談して動きます……",
+    },
+    preferWhen: { mentalHealthMax: 40, awarenessMax: 40 },
+  },
+];
