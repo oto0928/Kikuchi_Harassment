@@ -1,6 +1,6 @@
 "use client";
 
-import NpcDialogue, { getNpcMoodFromStatus } from "@/components/NpcDialogue";
+import NpcDialogue, { getNpcMoodFromResult } from "@/components/NpcDialogue";
 import RoukiGameOverImage from "@/components/RoukiGameOverImage";
 import ScoreBar from "@/components/ScoreBar";
 import { getStatusLabel } from "@/lib/evaluator";
@@ -85,7 +85,7 @@ export default function ResultCard({
 }: ResultCardProps) {
   const reducedMotion = useReducedMotion() ?? false;
   const styles = getStatusStyles(result.status);
-  const npcMood = getNpcMoodFromStatus(result.status);
+  const npcMood = getNpcMoodFromResult(result);
   const [showVerdict, setShowVerdict] = useState(reducedMotion);
   const [showContent, setShowContent] = useState(reducedMotion);
 

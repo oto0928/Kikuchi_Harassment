@@ -485,7 +485,7 @@ export default function EndingCinematic({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.9, duration: 0.4 }}
                 >
-                  {["精神衛生 UP", "意識レベル UP", "信頼関係 UP"].map(
+                  {["メンタル UP", "意識改善レベル UP", "信頼関係 UP"].map(
                     (label, i) => (
                       <span
                         key={label}

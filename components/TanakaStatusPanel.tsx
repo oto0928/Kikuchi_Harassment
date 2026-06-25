@@ -82,7 +82,7 @@ export default function TanakaStatusPanel({
         <div>
           <div className="mb-1 flex items-center justify-between">
             <span className="text-xs font-bold text-indigo-200">
-              精神衛生度
+              メンタル
               {delta && <DeltaBadge value={delta.mentalHealth} />}
             </span>
             <span className="text-xs text-indigo-300">
@@ -102,7 +102,7 @@ export default function TanakaStatusPanel({
         <div>
           <div className="mb-1 flex items-center justify-between">
             <span className="text-xs font-bold text-indigo-200">
-              意識レベル
+              意識改善レベル
               {delta && <DeltaBadge value={delta.awarenessLevel} />}
             </span>
             <span className="text-xs text-indigo-300">
@@ -121,7 +121,7 @@ export default function TanakaStatusPanel({
 
       {warning === "danger" && (
         <p className="mt-2 text-xs font-bold text-red-400">
-          警告: 精神衛生度が危険域です。0になるとゲームオーバー！
+          警告: メンタルが危険域です。0になるとゲームオーバー！
         </p>
       )}
       {warning === "caution" && (

@@ -1,6 +1,7 @@
 import Image from "next/image";
+import type { NpcMood } from "@/lib/npc-reaction";
 
-type NpcMood = "normal" | "worried" | "happy" | "shocked";
+export type { NpcMood };
 
 type NpcDialogueProps = {
   message: string;
@@ -29,15 +30,40 @@ const MOOD_STYLES: Record<
     bubble: "border-emerald-400 bg-emerald-50",
     label: "bg-emerald-600",
     tail: "border-t-emerald-400 sm:border-r-emerald-400",
-    imageFilter: "",
+    imageFilter: "brightness-105",
   },
   shocked: {
     bubble: "border-red-400 bg-red-50",
     label: "bg-red-600",
     tail: "border-t-red-400 sm:border-r-red-400",
-    imageFilter: "brightness-95",
+    imageFilter: "brightness-95 saturate-90",
+  },
+  crying: {
+    bubble: "border-red-500 bg-red-50",
+    label: "bg-red-700",
+    tail: "border-t-red-500 sm:border-r-red-500",
+    imageFilter: "brightness-90 saturate-75",
   },
 };
+
+function TearOverlay() {
+  return (
+    <>
+      <span
+        className="pointer-events-none absolute left-[18%] top-[38%] h-3 w-1.5 rounded-full bg-sky-300/90 sm:h-4 sm:w-2"
+        aria-hidden="true"
+      />
+      <span
+        className="pointer-events-none absolute right-[22%] top-[40%] h-4 w-1.5 rounded-full bg-sky-300/90 sm:h-5 sm:w-2"
+        aria-hidden="true"
+      />
+      <span
+        className="pointer-events-none absolute left-[24%] top-[48%] h-2 w-1 rounded-full bg-sky-200/80 sm:top-[50%]"
+        aria-hidden="true"
+      />
+    </>
+  );
+}
 
 export default function NpcDialogue({
   message,
@@ -45,6 +71,7 @@ export default function NpcDialogue({
   speakerLabel = "部下・田中",
 }: NpcDialogueProps) {
   const styles = MOOD_STYLES[mood];
+  const isCrying = mood === "crying";
 
   return (
     <div className="flex w-full flex-col items-center gap-3 sm:flex-row sm:items-end sm:gap-4">
@@ -59,6 +86,7 @@ export default function NpcDialogue({
             className={`h-[140px] w-[112px] object-cover object-top sm:h-[180px] sm:w-[144px] ${styles.imageFilter}`}
             priority
           />
+          {isCrying && <TearOverlay />}
         </div>
         <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap border-2 border-indigo-800 bg-indigo-700 px-2 py-0.5 text-xs font-bold text-white">
           {speakerLabel}
@@ -78,15 +106,17 @@ export default function NpcDialogue({
           aria-hidden="true"
         />
 
-        <div
-          className={`relative border-4 p-4 sm:p-5 ${styles.bubble}`}
-        >
+        <div className={`relative border-4 p-4 sm:p-5 ${styles.bubble}`}>
           <span
             className={`mb-2 inline-block px-2 py-0.5 text-xs font-bold text-white ${styles.label}`}
           >
             {speakerLabel}
           </span>
-          <p className="text-base leading-relaxed text-gray-800 sm:text-lg">
+          <p
+            className={`text-base leading-relaxed sm:text-lg ${
+              isCrying ? "font-bold text-red-900" : "text-gray-800"
+            }`}
+          >
             {message}
           </p>
         </div>
@@ -95,7 +125,7 @@ export default function NpcDialogue({
   );
 }
 
-/** 評価結果のステータスから部下のムードを決定 */
+/** @deprecated getNpcMoodFromResult を使用 */
 export function getNpcMoodFromStatus(
   status: "clear" | "insufficient" | "labor_consultation"
 ): NpcMood {
@@ -105,6 +135,8 @@ export function getNpcMoodFromStatus(
     case "insufficient":
       return "worried";
     case "labor_consultation":
-      return "shocked";
+      return "crying";
   }
 }
+
+export { getNpcMoodFromResult } from "@/lib/npc-reaction";

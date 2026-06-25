@@ -413,7 +413,7 @@ export default function GamePage() {
                   </p>
                   <ul className="mt-3 space-y-1 text-left text-sm text-indigo-200">
                     <li>・ハラスメント度が80点以上 → 即ゲームオーバー</li>
-                    <li>・田中の精神衛生度が0 → メンタル崩壊ゲームオーバー</li>
+                    <li>・田中のメンタルが0 → メンタル崩壊ゲームオーバー</li>
                     <li>
                       ・問題点の明確さまたは改善行動の具体性が30点未満 → 指導不足（ステージ失敗）
                     </li>

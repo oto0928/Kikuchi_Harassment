@@ -89,7 +89,7 @@ export function getGameOverMessage(reason: GameOverReason): string {
     case "harassment":
       return "ハラスメント度が80点を超えました。田中が労基に相談する事態に……";
     case "mental_breakdown":
-      return "田中の精神衛生度が0になりました。メンタル崩壊で退職届が提出されました……";
+      return "田中のメンタルが0になりました。メンタル崩壊で退職届が提出されました……";
     default:
       return "";
   }

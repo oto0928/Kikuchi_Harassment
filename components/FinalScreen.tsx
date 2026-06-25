@@ -227,12 +227,12 @@ export default function FinalScreen({
                       <span>対話 {entry.result.dialogueScore}点</span>
                       <span>支援 {entry.result.supportScore}点</span>
                       <span>
-                        精神衛生 {entry.tanakaAfter.mentalHealth}
+                        メンタル {entry.tanakaAfter.mentalHealth}
                         ({entry.tanakaDelta.mentalHealth >= 0 ? "+" : ""}
                         {entry.tanakaDelta.mentalHealth})
                       </span>
                       <span>
-                        意識 {entry.tanakaAfter.awarenessLevel}
+                        意識改善レベル {entry.tanakaAfter.awarenessLevel}
                         ({entry.tanakaDelta.awarenessLevel >= 0 ? "+" : ""}
                         {entry.tanakaDelta.awarenessLevel})
                       </span>

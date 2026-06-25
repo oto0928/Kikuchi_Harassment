@@ -184,7 +184,7 @@ export default function MentalBreakdownGameOverImage({
                 メンタル崩壊エンド
               </h2>
               <p className="mx-auto mt-3 max-w-prose text-left text-sm leading-relaxed text-slate-400 sm:text-center sm:text-base">
-                田中の精神衛生度が0になりました。メンタル崩壊で退職届が提出されました……
+                田中のメンタルが0になりました。メンタル崩壊で退職届が提出されました……
               </p>
 
               {phase >= 3 && (

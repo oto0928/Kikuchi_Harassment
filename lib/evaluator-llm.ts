@@ -13,6 +13,7 @@ import {
   findInstantHarassmentWords,
 } from "@/lib/instant-harassment";
 import { buildGuidanceAnalysisFeedback } from "@/lib/guidance-feedback";
+import { buildNpcReaction } from "@/lib/npc-reaction";
 import type { EvaluationResult, EvaluatorMode, Stage } from "@/types/game";
 
 /** LLMが返すJSONの型（5軸） */
@@ -107,9 +108,11 @@ function finalizeLlmResult(
   result: EvaluationResult,
   inputText: string
 ): EvaluationResult {
+  const text = inputText.trim();
   return {
     ...result,
-    feedback: buildGuidanceAnalysisFeedback(inputText.trim(), result),
+    feedback: buildGuidanceAnalysisFeedback(text, result),
+    npcReaction: buildNpcReaction(text, result),
   };
 }
 
@@ -216,10 +219,7 @@ export async function evaluateGuidanceWithLLMSafe(
   if (instantWords.length > 0) {
     const result = buildInstantHarassmentResult(instantWords);
     return {
-      result: {
-        ...result,
-        feedback: buildGuidanceAnalysisFeedback(text, result),
-      },
+      result: finalizeLlmResult(result, text),
       source: "llm",
       usedFallback: false,
     };

@@ -193,7 +193,7 @@ ${formatFewShotBlock()}
   "dialogueScore": 数値,
   "supportScore": 数値,
   "feedback": "（サーバー側で指導文を参照して生成するため空で可）",
-  "npcReaction": "部下・田中の反応セリフ（日本語、50文字程度）",
+  "npcReaction": "（サーバー側で生成するため空で可）",
   "matchedRiskWords": [],
   "matchedGoodWords": []
 }

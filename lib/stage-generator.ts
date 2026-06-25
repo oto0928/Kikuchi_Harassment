@@ -35,7 +35,7 @@ function buildContextNote(
         ? "普通"
         : "低い";
 
-  return `ステージ${stageNumber}・ティア${TIER_LABELS[tier]}。精神衛生度: ${tanaka.mentalHealth}（${mentalLabel}）、意識レベル: ${tanaka.awarenessLevel}（${awarenessLabel}）。`;
+  return `ステージ${stageNumber}・ティア${TIER_LABELS[tier]}。メンタル: ${tanaka.mentalHealth}（${mentalLabel}）、意識改善レベル: ${tanaka.awarenessLevel}（${awarenessLabel}）。`;
 }
 
 /**

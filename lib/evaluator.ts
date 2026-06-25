@@ -20,6 +20,7 @@ import {
   findInstantHarassmentWords,
 } from "@/lib/instant-harassment";
 import { buildGuidanceAnalysisFeedback } from "@/lib/guidance-feedback";
+import { buildNpcReaction } from "@/lib/npc-reaction";
 import type { EvaluationResult } from "@/types/game";
 
 function findMatchedWords(text: string, words: string[]): string[] {
@@ -141,6 +142,7 @@ export function evaluateGuidance(inputText: string): EvaluationResult {
     return {
       ...result,
       feedback: buildGuidanceAnalysisFeedback(text, result),
+      npcReaction: buildNpcReaction(text, result),
     };
   }
 
@@ -160,6 +162,7 @@ export function evaluateGuidance(inputText: string): EvaluationResult {
   return {
     ...result,
     feedback: buildGuidanceAnalysisFeedback(text, result),
+    npcReaction: buildNpcReaction(text, result),
   };
 }
 
