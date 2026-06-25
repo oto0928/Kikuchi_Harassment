@@ -48,13 +48,13 @@ export default function ScoreHintRow({
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
         aria-controls={`score-hint-${hintKey}`}
-        className="mt-2 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[6px] border-2 border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-bold text-indigo-700 hover:bg-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+        className="mt-1.5 inline-flex min-h-[36px] items-center justify-center gap-1 rounded-[4px] border border-indigo-300 bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-700 hover:bg-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-400"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 20 20"
           fill="currentColor"
-          className="h-4 w-4 shrink-0"
+          className="h-3 w-3 shrink-0"
           aria-hidden="true"
         >
           <path
@@ -63,9 +63,9 @@ export default function ScoreHintRow({
             clipRule="evenodd"
           />
         </svg>
-        {open ? "ヒントを閉じる" : "改善ヒントを見る"}
+        {open ? "閉じる" : "改善ヒント"}
         {showBadge && !open && (
-          <span className="border border-amber-400 bg-amber-100 px-1.5 py-0.5 text-xs font-black text-amber-800">
+          <span className="border border-amber-400 bg-amber-100 px-1 py-px text-[10px] font-black leading-none text-amber-800">
             要改善
           </span>
         )}
@@ -73,7 +73,7 @@ export default function ScoreHintRow({
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 20 20"
           fill="currentColor"
-          className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`h-3 w-3 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
           aria-hidden="true"
         >
           <path

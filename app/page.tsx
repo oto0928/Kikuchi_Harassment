@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import FinalScreen from "@/components/FinalScreen";
 import EvaluationOverlay, {
   waitForEvaluation,
@@ -15,11 +15,18 @@ import StageCard from "@/components/StageCard";
 import TanakaStatusPanel from "@/components/TanakaStatusPanel";
 import T4ChaosEffects from "@/components/T4ChaosEffects";
 import T4StageIntro from "@/components/T4StageIntro";
+import StageTransitionCutscene from "@/components/StageTransitionCutscene";
 import AppNav from "@/components/AppNav";
 import { useGameAudio } from "@/components/GameAudioProvider";
 import { calculateBossRank, evaluateGuidance } from "@/lib/evaluator";
 import { resolveEnding } from "@/lib/endings";
 import { persistPlayEnd, persistStageAttempt, persistStageReached } from "@/lib/game-progress";
+import {
+  clearGameSession,
+  loadGameSession,
+  saveGameSession,
+  type GameSessionPhase,
+} from "@/lib/game-session";
 import { generateStage } from "@/lib/stage-generator";
 import {
   INITIAL_TANAKA_STATUS,
@@ -39,9 +46,11 @@ import type {
 } from "@/types/game";
 import { MAX_STAGES } from "@/types/game";
 
-type GamePhase = "playing" | "evaluating" | "result" | "finished" | "gameover";
+type GamePhase = GameSessionPhase;
 
 export default function GamePage() {
+  const [hydrated, setHydrated] = useState(false);
+  const isFreshGameRef = useRef(true);
   const [stageNumber, setStageNumber] = useState(1);
   const [currentStage, setCurrentStage] = useState<Stage | null>(null);
   const [tanakaStatus, setTanakaStatus] = useState<TanakaStatus>(INITIAL_TANAKA_STATUS);
@@ -91,6 +100,7 @@ export default function GamePage() {
 
   /** ゲーム初期化・ステージ生成 */
   const initGame = useCallback(() => {
+    clearGameSession();
     const initialTanaka = { ...INITIAL_TANAKA_STATUS };
     const firstStage = generateStage(1, initialTanaka);
     setStageNumber(1);
@@ -112,9 +122,82 @@ export default function GamePage() {
     persistStageReached(1);
   }, []);
 
+  /** マウント時：進行中セッションを復元、なければ新規開始 */
   useEffect(() => {
-    initGame();
+    const saved = loadGameSession();
+    if (saved) {
+      isFreshGameRef.current = false;
+      setStageNumber(saved.stageNumber);
+      setCurrentStage(saved.currentStage);
+      setTanakaStatus(saved.tanakaStatus);
+      setLastTanakaDelta(saved.lastTanakaDelta);
+      setInputText(saved.inputText);
+      setCurrentResult(saved.currentResult);
+      setHistory(saved.history);
+      setPhase(saved.phase);
+      setFinalResult(saved.finalResult);
+      setGameOverReason(saved.gameOverReason);
+      setInputError(saved.inputError);
+      setEvaluatorMode(saved.evaluatorMode);
+      setLastEvaluatorSource(saved.lastEvaluatorSource);
+      setUsedLlmFallback(saved.usedLlmFallback);
+      setLlmFallbackReason(saved.llmFallbackReason);
+      setShowT4Intro(saved.showT4Intro);
+      if (
+        saved.phase === "result" ||
+        saved.phase === "gameover" ||
+        saved.phase === "finished"
+      ) {
+        setCanProceed(true);
+      }
+    } else {
+      initGame();
+    }
+    setHydrated(true);
   }, [initGame]);
+
+  /** ゲーム状態を sessionStorage に保存（ページ遷移後も復元できるように） */
+  useEffect(() => {
+    if (!hydrated || !currentStage) return;
+
+    saveGameSession({
+      version: 1,
+      stageNumber,
+      currentStage,
+      tanakaStatus,
+      lastTanakaDelta,
+      inputText,
+      currentResult,
+      history,
+      phase,
+      finalResult,
+      gameOverReason,
+      inputError,
+      evaluatorMode,
+      lastEvaluatorSource,
+      usedLlmFallback,
+      llmFallbackReason,
+      showT4Intro,
+    });
+  }, [
+    hydrated,
+    stageNumber,
+    currentStage,
+    tanakaStatus,
+    lastTanakaDelta,
+    inputText,
+    currentResult,
+    history,
+    phase,
+    finalResult,
+    gameOverReason,
+    inputError,
+    evaluatorMode,
+    lastEvaluatorSource,
+    usedLlmFallback,
+    llmFallbackReason,
+    showT4Intro,
+  ]);
 
   /** AI評価APIの利用可否を確認 */
   useEffect(() => {
@@ -122,7 +205,7 @@ export default function GamePage() {
       .then((res) => res.json())
       .then((data: { available: boolean }) => {
         setLlmAvailable(data.available);
-        if (data.available) {
+        if (data.available && isFreshGameRef.current) {
           setEvaluatorMode("llm");
         }
       })
@@ -326,12 +409,17 @@ export default function GamePage() {
 
   /** 次のステージへ進む */
   function handleNextStage() {
-    playSe("stage_advance");
     if (stageNumber >= MAX_STAGES) {
+      playSe("stage_advance");
       finishGame();
       return;
     }
 
+    setPhase("transition");
+  }
+
+  /** ステージ間カット終了後に次ステージへ */
+  function completeStageTransition() {
     const nextNumber = stageNumber + 1;
     const nextStage = generateStage(nextNumber, tanakaStatus);
     persistStageReached(nextNumber);
@@ -361,12 +449,13 @@ export default function GamePage() {
   /** ゲームをリセット */
   function handleRestart() {
     playSe("click");
+    isFreshGameRef.current = true;
     initGame();
   }
 
   const isGameEnded = phase === "finished" || phase === "gameover";
 
-  if (!currentStage) {
+  if (!hydrated || !currentStage) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-indigo-950 text-white">
         読み込み中...
@@ -385,7 +474,16 @@ export default function GamePage() {
         stageNumber={stageNumber}
         onComplete={() => setShowT4Intro(false)}
       />
-      {isChaosStage && !isGameEnded && !showT4Intro && (
+      <StageTransitionCutscene
+        show={phase === "transition"}
+        completedStage={stageNumber}
+        nextStage={stageNumber + 1}
+        tanakaStatus={tanakaStatus}
+        delta={lastTanakaDelta}
+        resultStatus={currentResult?.status ?? "insufficient"}
+        onComplete={completeStageTransition}
+      />
+      {isChaosStage && !isGameEnded && !showT4Intro && phase !== "transition" && (
         <T4ChaosEffects active variant="full" />
       )}
 
