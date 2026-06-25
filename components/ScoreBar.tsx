@@ -13,6 +13,8 @@ type ScoreBarProps = {
   delay?: number;
   /** カウントアップアニメーションを有効化 */
   animateScore?: boolean;
+  /** 指定時はこの値から score までアニメーション */
+  animateFrom?: number;
 };
 
 function getBarColor(
@@ -51,10 +53,15 @@ function useAnimatedScore(
   target: number,
   delay: number,
   enabled: boolean,
-  reducedMotion: boolean
+  reducedMotion: boolean,
+  from = 0
 ) {
-  const [displayScore, setDisplayScore] = useState(enabled && !reducedMotion ? 0 : target);
-  const [barWidth, setBarWidth] = useState(enabled && !reducedMotion ? 0 : target);
+  const [displayScore, setDisplayScore] = useState(
+    enabled && !reducedMotion ? from : target
+  );
+  const [barWidth, setBarWidth] = useState(
+    enabled && !reducedMotion ? from : target
+  );
 
   useEffect(() => {
     if (!enabled || reducedMotion) {
@@ -63,17 +70,17 @@ function useAnimatedScore(
       return;
     }
 
-    setDisplayScore(0);
-    setBarWidth(0);
+    setDisplayScore(from);
+    setBarWidth(from);
 
-    const scoreControls = animate(0, target, {
+    const scoreControls = animate(from, target, {
       delay,
       duration: 0.9,
       ease: [0.22, 1, 0.36, 1],
       onUpdate: (v) => setDisplayScore(Math.round(v)),
     });
 
-    const barControls = animate(0, target, {
+    const barControls = animate(from, target, {
       delay,
       duration: 0.9,
       ease: [0.22, 1, 0.36, 1],
@@ -84,7 +91,7 @@ function useAnimatedScore(
       scoreControls.stop();
       barControls.stop();
     };
-  }, [target, delay, enabled, reducedMotion]);
+  }, [target, delay, enabled, reducedMotion, from]);
 
   return { displayScore, barWidth };
 }
@@ -97,13 +104,15 @@ export default function ScoreBar({
   hideLabel = false,
   delay = 0,
   animateScore = false,
+  animateFrom,
 }: ScoreBarProps) {
   const reducedMotion = useReducedMotion() ?? false;
   const { displayScore, barWidth } = useAnimatedScore(
     score,
     delay,
     animateScore,
-    reducedMotion
+    reducedMotion,
+    animateFrom ?? 0
   );
   const barColor = getBarColor(score, dangerMode, lowIsBad);
   const textColor = getScoreTextColor(score, dangerMode, lowIsBad);

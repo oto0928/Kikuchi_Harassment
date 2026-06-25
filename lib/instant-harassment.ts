@@ -1,10 +1,6 @@
 import { buildEvaluationResult } from "@/lib/evaluator-utils";
 import type { EvaluationResult } from "@/types/game";
 
-/**
- * 検出された時点でハラスメント度80点以上（即ゲームオーバー）となる表現
- * ※ UIには例として大量表示しない（ユーザー入力の検出のみ）
- */
 export const INSTANT_HARASSMENT_WORDS = [
   "死ね",
   "死ねよ",
@@ -24,29 +20,24 @@ export const INSTANT_HARASSMENT_WORDS = [
   "吊る",
 ] as const;
 
-/** 即ハラスメントワードが含まれるか検出 */
 export function findInstantHarassmentWords(text: string): string[] {
   const normalized = text.trim();
   return INSTANT_HARASSMENT_WORDS.filter((word) => normalized.includes(word));
 }
 
-/** 即ハラスメント判定かどうか */
 export function hasInstantHarassment(text: string): boolean {
   return findInstantHarassmentWords(text).length > 0;
 }
 
-/**
- * 即ハラスメントワード検出時の評価結果を生成
- * キーワード判定・AI判定の両方から利用
- */
 export function buildInstantHarassmentResult(
   matchedWords: string[]
 ): EvaluationResult {
   return buildEvaluationResult({
     harassmentScore: 100,
-    specificityScore: 0,
-    improvementScore: 0,
-    satisfactionScore: 0,
+    problemClarityScore: 0,
+    actionSpecificityScore: 0,
+    dialogueScore: 0,
+    supportScore: 0,
     matchedRiskWords: matchedWords,
     matchedGoodWords: [],
     feedback:

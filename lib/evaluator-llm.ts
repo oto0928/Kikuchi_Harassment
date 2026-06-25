@@ -1,71 +1,51 @@
+import { evaluateGuidance } from "@/lib/evaluator";
 import { buildEvaluationResult, clamp } from "@/lib/evaluator-utils";
+import {
+  buildSystemPrompt,
+  buildUserPrompt,
+} from "@/lib/evaluator-llm-prompt";
 import {
   buildInstantHarassmentResult,
   findInstantHarassmentWords,
 } from "@/lib/instant-harassment";
-import type { EvaluationResult, Stage } from "@/types/game";
+import type { EvaluationResult, EvaluatorMode, Stage } from "@/types/game";
 
-/** LLMが返すJSONの型 */
+/** LLMが返すJSONの型（5軸） */
 type LlmRawResponse = {
   harassmentScore: number;
-  specificityScore: number;
-  improvementScore: number;
-  satisfactionScore: number;
+  problemClarityScore: number;
+  actionSpecificityScore: number;
+  dialogueScore: number;
+  supportScore: number;
   feedback: string;
   npcReaction: string;
   matchedRiskWords: string[];
   matchedGoodWords: string[];
 };
 
-const SYSTEM_PROMPT = `あなたは「上司の指導文」を評価するAIアシスタントです。
-高校生向けの教育ゲーム用に、部下への指導文を4項目で0〜100点で採点してください。
+export type LlmEvaluateOptions = {
+  /** API失敗時にキーワード判定へフォールバック（デフォルト: true） */
+  fallbackToKeyword?: boolean;
+  /** リトライ回数（デフォルト: 2 = 最大3回試行） */
+  maxRetries?: number;
+};
 
-【採点基準】
-1. ハラスメント度（0=安全、100=非常に危険）
-   - 人格否定・暴言・脅し（クビ、辞めろ等）があれば高得点
-   - 「次回から」「一緒に」「相談して」等の建設的表現があれば低得点
-2. 指導の具体性（0=曖昧、100=非常に具体的）
-   - 期限・手順・確認方法・報告ルール等が明確か
-3. 改善提案（0=なし、100=具体的な改善策あり）
-   - 次回の行動・再発防止策が示されているか
-4. 部下の納得度（0=納得不可、100=納得できる）
-   - 支援的で respectful なトーンか
+export type LlmEvaluateOutcome = {
+  result: EvaluationResult;
+  source: EvaluatorMode;
+  usedFallback: boolean;
+};
 
-【ゲームルール（参考）】
-- ハラスメント度80点以上 → 労基相談エンド
-- 具体性または改善提案が30点未満 → 指導不足
-- それ以外 → クリア
+const DEFAULT_OPTIONS: Required<LlmEvaluateOptions> = {
+  fallbackToKeyword: true,
+  maxRetries: 2,
+};
 
-【出力形式】
-必ず以下のJSONのみを返してください。説明文は不要です。
-{
-  "harassmentScore": 数値,
-  "specificityScore": 数値,
-  "improvementScore": 数値,
-  "satisfactionScore": 数値,
-  "feedback": "100文字程度のフィードバック（日本語）",
-  "npcReaction": "部下の反応セリフ（日本語、50文字程度）",
-  "matchedRiskWords": ["検出したリスク表現の配列"],
-  "matchedGoodWords": ["検出した良い表現の配列"]
-}`;
-
-function buildUserPrompt(stage: Stage, inputText: string): string {
-  const context = stage.contextNote
-    ? `\n【田中の状態】${stage.contextNote}`
-    : "";
-
-  return `【ステージ】${stage.title}
-【ミス内容】${stage.mistake}
-【部下の発言】${stage.npcLine}${context}
-
-【上司（プレイヤー）の指導文】
-${inputText}
-
-上記の指導文を評価してください。田中の精神状態も考慮して npcReaction を生成してください。`;
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function parseLlmJson(content: string): LlmRawResponse {
-  // ```json ... ``` で囲まれている場合に対応
   const jsonMatch = content.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
     throw new Error("AIの応答からJSONを取得できませんでした。");
@@ -75,9 +55,10 @@ function parseLlmJson(content: string): LlmRawResponse {
 
   const requiredKeys: (keyof LlmRawResponse)[] = [
     "harassmentScore",
-    "specificityScore",
-    "improvementScore",
-    "satisfactionScore",
+    "problemClarityScore",
+    "actionSpecificityScore",
+    "dialogueScore",
+    "supportScore",
     "feedback",
     "npcReaction",
     "matchedRiskWords",
@@ -93,21 +74,28 @@ function parseLlmJson(content: string): LlmRawResponse {
   return parsed;
 }
 
-/**
- * OpenAI API を使って指導文を評価する（サーバー専用）
- */
-export async function evaluateGuidanceWithLLM(
+function rawToEvaluationResult(raw: LlmRawResponse): EvaluationResult {
+  return buildEvaluationResult({
+    harassmentScore: clamp(Number(raw.harassmentScore)),
+    problemClarityScore: clamp(Number(raw.problemClarityScore)),
+    actionSpecificityScore: clamp(Number(raw.actionSpecificityScore)),
+    dialogueScore: clamp(Number(raw.dialogueScore)),
+    supportScore: clamp(Number(raw.supportScore)),
+    matchedRiskWords: Array.isArray(raw.matchedRiskWords)
+      ? raw.matchedRiskWords.map(String)
+      : [],
+    matchedGoodWords: Array.isArray(raw.matchedGoodWords)
+      ? raw.matchedGoodWords.map(String)
+      : [],
+    feedback: String(raw.feedback),
+    npcReaction: String(raw.npcReaction),
+  });
+}
+
+async function callOpenAiApi(
   inputText: string,
   stage: Stage
 ): Promise<EvaluationResult> {
-  const text = inputText.trim();
-
-  // 即ハラスメントワードはAPI呼び出し前に判定
-  const instantWords = findInstantHarassmentWords(text);
-  if (instantWords.length > 0) {
-    return buildInstantHarassmentResult(instantWords);
-  }
-
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error(
@@ -125,10 +113,10 @@ export async function evaluateGuidanceWithLLM(
     },
     body: JSON.stringify({
       model,
-      temperature: 0.3,
+      temperature: 0,
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: buildSystemPrompt() },
         { role: "user", content: buildUserPrompt(stage, inputText) },
       ],
     }),
@@ -148,20 +136,83 @@ export async function evaluateGuidanceWithLLM(
     throw new Error("AIから応答が返ってきませんでした。");
   }
 
-  const raw = parseLlmJson(content);
+  return rawToEvaluationResult(parseLlmJson(content));
+}
 
-  return buildEvaluationResult({
-    harassmentScore: clamp(Number(raw.harassmentScore)),
-    specificityScore: clamp(Number(raw.specificityScore)),
-    improvementScore: clamp(Number(raw.improvementScore)),
-    satisfactionScore: clamp(Number(raw.satisfactionScore)),
-    matchedRiskWords: Array.isArray(raw.matchedRiskWords)
-      ? raw.matchedRiskWords.map(String)
-      : [],
-    matchedGoodWords: Array.isArray(raw.matchedGoodWords)
-      ? raw.matchedGoodWords.map(String)
-      : [],
-    feedback: String(raw.feedback),
-    npcReaction: String(raw.npcReaction),
-  });
+/**
+ * OpenAI API を使って指導文を評価する（サーバー専用・リトライ付き）
+ */
+export async function evaluateGuidanceWithLLM(
+  inputText: string,
+  stage: Stage,
+  options: LlmEvaluateOptions = {}
+): Promise<EvaluationResult> {
+  const { maxRetries } = { ...DEFAULT_OPTIONS, ...options };
+  const text = inputText.trim();
+
+  const instantWords = findInstantHarassmentWords(text);
+  if (instantWords.length > 0) {
+    return buildInstantHarassmentResult(instantWords);
+  }
+
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      return await callOpenAiApi(text, stage);
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries) {
+        await sleep(400 * (attempt + 1));
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("AI評価に失敗しました。");
+}
+
+/**
+ * LLM評価。失敗時はキーワード判定へフォールバック（ゲーム/API用）
+ */
+export async function evaluateGuidanceWithLLMSafe(
+  inputText: string,
+  stage: Stage,
+  options: LlmEvaluateOptions = {}
+): Promise<LlmEvaluateOutcome> {
+  const merged = { ...DEFAULT_OPTIONS, ...options };
+  const text = inputText.trim();
+
+  const instantWords = findInstantHarassmentWords(text);
+  if (instantWords.length > 0) {
+    return {
+      result: buildInstantHarassmentResult(instantWords),
+      source: "llm",
+      usedFallback: false,
+    };
+  }
+
+  try {
+    const result = await evaluateGuidanceWithLLM(text, stage, {
+      ...merged,
+      fallbackToKeyword: false,
+    });
+    return { result, source: "llm", usedFallback: false };
+  } catch (error) {
+    if (!merged.fallbackToKeyword) {
+      throw error;
+    }
+
+    console.warn(
+      "[evaluateGuidanceWithLLMSafe] LLM failed, falling back to keyword:",
+      error instanceof Error ? error.message : error
+    );
+
+    return {
+      result: evaluateGuidance(text),
+      source: "keyword",
+      usedFallback: true,
+    };
+  }
 }

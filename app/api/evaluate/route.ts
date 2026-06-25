@@ -1,4 +1,4 @@
-import { evaluateGuidanceWithLLM } from "@/lib/evaluator-llm";
+import { evaluateGuidanceWithLLMSafe } from "@/lib/evaluator-llm";
 import type { Stage } from "@/types/game";
 import { NextResponse } from "next/server";
 
@@ -26,11 +26,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await evaluateGuidanceWithLLM(inputText, body.stage);
+    const outcome = await evaluateGuidanceWithLLMSafe(inputText, body.stage);
 
     return NextResponse.json({
-      result,
-      source: "llm" as const,
+      result: outcome.result,
+      source: outcome.source,
+      usedFallback: outcome.usedFallback,
     });
   } catch (error) {
     const message =

@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 type ResultCardProps = {
   result: EvaluationResult;
   evaluatorSource?: "keyword" | "llm";
+  usedLlmFallback?: boolean;
 };
 
 function getStatusStyles(status: EvaluationResult["status"]) {
@@ -41,27 +42,30 @@ function getStatusStyles(status: EvaluationResult["status"]) {
 
 const SCORE_ITEMS = [
   { key: "harassment", label: "ハラスメント度", dangerMode: true },
-  { key: "specificity", label: "指導の具体性", lowIsBad: true },
-  { key: "improvement", label: "改善提案", lowIsBad: true },
-  { key: "satisfaction", label: "部下の納得度" },
+  { key: "problemClarity", label: "問題点の明確さ", lowIsBad: true },
+  { key: "actionSpecificity", label: "改善行動の具体性", lowIsBad: true },
+  { key: "dialogue", label: "対話・確認", lowIsBad: true },
+  { key: "support", label: "支援・再発防止", lowIsBad: true },
 ] as const;
 
 function getScoreValue(result: EvaluationResult, key: string): number {
   switch (key) {
     case "harassment":
       return result.harassmentScore;
-    case "specificity":
-      return result.specificityScore;
-    case "improvement":
-      return result.improvementScore;
-    case "satisfaction":
-      return result.satisfactionScore;
+    case "problemClarity":
+      return result.problemClarityScore;
+    case "actionSpecificity":
+      return result.actionSpecificityScore;
+    case "dialogue":
+      return result.dialogueScore;
+    case "support":
+      return result.supportScore;
     default:
       return 0;
   }
 }
 
-export default function ResultCard({ result, evaluatorSource }: ResultCardProps) {
+export default function ResultCard({ result, evaluatorSource, usedLlmFallback }: ResultCardProps) {
   const reducedMotion = useReducedMotion() ?? false;
   const styles = getStatusStyles(result.status);
   const npcMood = getNpcMoodFromStatus(result.status);
@@ -172,7 +176,11 @@ export default function ResultCard({ result, evaluatorSource }: ResultCardProps)
             transition={{ delay: 0.3 }}
             className="mt-1 text-xs opacity-80"
           >
-            {evaluatorSource === "llm" ? "AI判定（OpenAI）" : "キーワード判定"}
+            {evaluatorSource === "llm"
+              ? "AI判定（OpenAI）"
+              : usedLlmFallback
+                ? "キーワード判定（AI失敗のため代替）"
+                : "キーワード判定"}
           </motion.p>
         )}
       </motion.div>

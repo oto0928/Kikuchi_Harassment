@@ -12,41 +12,47 @@ export const INITIAL_TANAKA_STATUS: TanakaStatus = {
   awarenessLevel: 40,
 };
 
-/** 評価結果から田中ステータスの変化量を計算 */
+/** 評価結果から田中ステータスの変化量を計算（5軸） */
 export function calcTanakaDelta(result: EvaluationResult): TanakaStatusDelta {
   let mentalHealth = 0;
   let awarenessLevel = 0;
 
   switch (result.status) {
     case "clear":
-      mentalHealth += 5 + Math.floor(result.satisfactionScore / 25);
-      awarenessLevel += 8 + Math.floor(result.improvementScore / 20);
+      mentalHealth += 10 + Math.floor(result.dialogueScore / 15);
+      awarenessLevel += 12 + Math.floor(result.actionSpecificityScore / 12);
       break;
     case "insufficient":
-      mentalHealth -= 8;
-      awarenessLevel -= 4;
+      mentalHealth -= 15;
+      awarenessLevel -= 10;
       break;
     case "labor_consultation":
-      mentalHealth -= 45;
-      awarenessLevel -= 12;
+      mentalHealth -= 50;
+      awarenessLevel -= 18;
       break;
   }
 
-  // ハラスメント度による追加ペナルティ
   if (result.harassmentScore >= 60) {
-    mentalHealth -= Math.floor((result.harassmentScore - 50) / 4);
+    mentalHealth -= Math.floor((result.harassmentScore - 50) / 3);
+    awarenessLevel -= Math.floor((result.harassmentScore - 55) / 5);
+  } else if (result.harassmentScore >= 40) {
+    mentalHealth -= 8;
+    awarenessLevel -= 4;
   } else if (result.harassmentScore < 25) {
-    mentalHealth += 4;
+    mentalHealth += 8;
   }
 
-  // 納得度が高いと精神衛生回復
-  if (result.satisfactionScore >= 70) {
-    mentalHealth += 5;
+  if (result.dialogueScore >= 60) {
+    mentalHealth += 8;
   }
 
-  // 具体性が高いと意識レベル上昇
-  if (result.specificityScore >= 70) {
-    awarenessLevel += 5;
+  if (result.problemClarityScore >= 60) {
+    awarenessLevel += 8;
+  }
+
+  if (result.supportScore >= 50) {
+    mentalHealth += 6;
+    awarenessLevel += 6;
   }
 
   return { mentalHealth, awarenessLevel };

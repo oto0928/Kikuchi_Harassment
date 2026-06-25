@@ -33,6 +33,13 @@ export default function TanakaStatusPanel({
 }: TanakaStatusPanelProps) {
   const warning = getMentalHealthWarning(status.mentalHealth);
   const mood = getMoodFromTanaka(status);
+  const shouldAnimate = Boolean(delta);
+  const prevMental = delta
+    ? status.mentalHealth - delta.mentalHealth
+    : status.mentalHealth;
+  const prevAwareness = delta
+    ? status.awarenessLevel - delta.awarenessLevel
+    : status.awarenessLevel;
 
   const moodLabel = {
     normal: "普通",
@@ -87,6 +94,8 @@ export default function TanakaStatusPanel({
             score={status.mentalHealth}
             lowIsBad
             hideLabel
+            animateScore={shouldAnimate}
+            animateFrom={shouldAnimate ? prevMental : undefined}
           />
         </div>
 
@@ -100,7 +109,13 @@ export default function TanakaStatusPanel({
               {getAwarenessLabel(status.awarenessLevel)}
             </span>
           </div>
-          <ScoreBar label="" score={status.awarenessLevel} hideLabel />
+          <ScoreBar
+            label=""
+            score={status.awarenessLevel}
+            hideLabel
+            animateScore={shouldAnimate}
+            animateFrom={shouldAnimate ? prevAwareness : undefined}
+          />
         </div>
       </div>
 

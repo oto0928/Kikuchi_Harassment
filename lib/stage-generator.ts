@@ -1,85 +1,25 @@
-import { STAGE_TEMPLATES } from "@/lib/stage-templates";
-import type { Stage, StageTemplate, TanakaStatus } from "@/types/game";
+import { getStageSlot, TIER_LABELS } from "@/lib/stage-templates";
+import type { Stage, StageSlotTiered, StageTier, TanakaStatus } from "@/types/game";
 
 function clamp(value: number, min = 0, max = 100): number {
   return Math.round(Math.min(max, Math.max(min, value)));
 }
 
-/** テンプレートと現在ステータスの適合度を算出 */
-function calcFitScore(template: StageTemplate, tanaka: TanakaStatus): number {
-  let score = 50;
-
-  const { mentalHealth, awarenessLevel } = tanaka;
-  const pref = template.preferWhen;
-
-  // 条件に合致するほど加点
-  if (pref.mentalHealthMax !== undefined && mentalHealth <= pref.mentalHealthMax) {
-    score += 25;
-  }
-  if (pref.mentalHealthMin !== undefined && mentalHealth >= pref.mentalHealthMin) {
-    score += 25;
-  }
-  if (pref.awarenessMax !== undefined && awarenessLevel <= pref.awarenessMax) {
-    score += 25;
-  }
-  if (pref.awarenessMin !== undefined && awarenessLevel >= pref.awarenessMin) {
-    score += 25;
-  }
-
-  // 精神衛生度が低いほど severity 高いシナリオを優先
-  if (mentalHealth < 40) {
-    score += template.severity * 8;
-  } else if (mentalHealth > 70) {
-    score -= template.severity * 5;
-    if (template.severity === 1) score += 15;
-  }
-
-  // 意識レベルが高いほど軽微なミスを優先
-  if (awarenessLevel > 60 && template.severity === 1) score += 20;
-  if (awarenessLevel < 30 && template.category === "repeat") score += 20;
-
-  // カテゴリ別の動的ブースト
-  if (mentalHealth < 35 && template.category === "attitude") score += 15;
-  if (awarenessLevel < 35 && template.category === "repeat") score += 15;
-  if (awarenessLevel > 55 && template.id === "minor_slip") score += 20;
-
-  return score;
+/**
+ * 精神衛生度・意識レベルの低い方からティアを決定
+ * T1: 両方50以上 / T2: 30-49 / T3: 15-29 / T4: 14以下
+ */
+export function pickTier(tanaka: TanakaStatus): StageTier {
+  const minStat = Math.min(tanaka.mentalHealth, tanaka.awarenessLevel);
+  if (minStat >= 50) return "t1";
+  if (minStat >= 30) return "t2";
+  if (minStat >= 15) return "t3";
+  return "t4";
 }
 
-/** 精神衛生度に応じたセリフを選択 */
-function selectNpcLine(template: StageTemplate, tanaka: TanakaStatus): string {
-  const { mentalHealth, awarenessLevel } = tanaka;
-  const lines = template.npcLine;
-
-  if (awarenessLevel >= 60 && lines.motivated) {
-    return lines.motivated;
-  }
-  if (mentalHealth < 35) {
-    return lines.defensive;
-  }
-  if (mentalHealth < 60) {
-    return lines.anxious;
-  }
-  return lines.normal;
-}
-
-/** 意識レベルに応じたミス内容を選択 */
-function selectMistake(template: StageTemplate, tanaka: TanakaStatus): string {
-  const { awarenessLevel } = tanaka;
-  const m = template.mistake;
-
-  if (awarenessLevel >= 55 && m.highAwareness) {
-    return m.highAwareness;
-  }
-  if (awarenessLevel < 40 && m.lowAwareness) {
-    return m.lowAwareness;
-  }
-  return m.default;
-}
-
-/** 生成コンテキストの説明文 */
 function buildContextNote(
-  template: StageTemplate,
+  stageNumber: number,
+  tier: StageTier,
   tanaka: TanakaStatus
 ): string {
   const mentalLabel =
@@ -95,40 +35,40 @@ function buildContextNote(
         ? "普通"
         : "低い";
 
-  return `田中の精神衛生度: ${tanaka.mentalHealth}（${mentalLabel}）、意識レベル: ${tanaka.awarenessLevel}（${awarenessLabel}）。${template.category}系の出来事が発生。`;
+  return `ステージ${stageNumber}・ティア${TIER_LABELS[tier]}。精神衛生度: ${tanaka.mentalHealth}（${mentalLabel}）、意識レベル: ${tanaka.awarenessLevel}（${awarenessLabel}）。`;
 }
 
 /**
- * 田中のステータスに基づいて次のステージを動的生成
+ * ステージ番号と田中ステータスからステージを生成
  */
-export function generateStage(
-  stageNumber: number,
-  tanaka: TanakaStatus,
-  usedTemplateIds: string[]
-): Stage {
-  const available = STAGE_TEMPLATES.filter(
-    (t) => !usedTemplateIds.includes(t.id)
-  );
+export function generateStage(stageNumber: number, tanaka: TanakaStatus): Stage {
+  const slot = getStageSlot(stageNumber);
 
-  // 使い切った場合はリセット（同カテゴリ被りを避けるため severity でソート）
-  const pool = available.length > 0 ? available : [...STAGE_TEMPLATES];
+  if ("fixed" in slot && slot.fixed) {
+    const content = slot.tiers.t1;
+    return {
+      id: stageNumber,
+      templateId: `stage${stageNumber}`,
+      tier: "t1",
+      title: content.title,
+      mistake: content.mistake,
+      npcLine: content.npcLine,
+      contextNote: buildContextNote(stageNumber, "t1", tanaka),
+    };
+  }
 
-  const scored = pool
-    .map((template) => ({
-      template,
-      score: calcFitScore(template, tanaka) + Math.random() * 15,
-    }))
-    .sort((a, b) => b.score - a.score);
-
-  const picked = scored[0]?.template ?? STAGE_TEMPLATES[0];
+  const tieredSlot = slot as StageSlotTiered;
+  const tier = pickTier(tanaka);
+  const content = tieredSlot.tiers[tier];
 
   return {
     id: stageNumber,
-    templateId: picked.id,
-    title: picked.title,
-    mistake: selectMistake(picked, tanaka),
-    npcLine: selectNpcLine(picked, tanaka),
-    contextNote: buildContextNote(picked, tanaka),
+    templateId: `stage${stageNumber}`,
+    tier,
+    title: content.title,
+    mistake: content.mistake,
+    npcLine: content.npcLine,
+    contextNote: buildContextNote(stageNumber, tier, tanaka),
   };
 }
 
@@ -151,7 +91,9 @@ export function getAwarenessLabel(value: number): string {
 }
 
 /** 精神衛生度から NPC ムードを決定 */
-export function getMoodFromTanaka(tanaka: TanakaStatus): "normal" | "worried" | "happy" | "shocked" {
+export function getMoodFromTanaka(
+  tanaka: TanakaStatus
+): "normal" | "worried" | "happy" | "shocked" {
   if (tanaka.mentalHealth < 25) return "shocked";
   if (tanaka.mentalHealth < 50) return "worried";
   if (tanaka.mentalHealth >= 75 && tanaka.awarenessLevel >= 60) return "happy";

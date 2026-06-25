@@ -1,5 +1,6 @@
 "use client";
 
+import { useOptionalGameAudio } from "@/components/GameAudioProvider";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
@@ -23,6 +24,7 @@ export default function EvaluationOverlay({
 }: EvaluationOverlayProps) {
   const [stepIndex, setStepIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const audio = useOptionalGameAudio();
 
   useEffect(() => {
     const stepTimer = setInterval(() => {
@@ -36,11 +38,16 @@ export default function EvaluationOverlay({
       setProgress(Math.min(100, (elapsed / duration) * 100));
     }, 30);
 
+    const tickTimer = setInterval(() => {
+      audio?.playSe("judge_tick");
+    }, 450);
+
     return () => {
       clearInterval(stepTimer);
       clearInterval(progressTimer);
+      clearInterval(tickTimer);
     };
-  }, []);
+  }, [audio]);
 
   return (
     <motion.div

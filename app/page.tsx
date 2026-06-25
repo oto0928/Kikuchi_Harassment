@@ -1,24 +1,29 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import FinalScreen from "@/components/FinalScreen";
 import EvaluationOverlay, {
   waitForEvaluation,
 } from "@/components/EvaluationOverlay";
 import GameHud from "@/components/GameHud";
+import { MentalBreakdownFullScreenFlash } from "@/components/MentalBreakdownGameOverImage";
 import RoukiGameOverImage, {
   RoukiFullScreenFlash,
 } from "@/components/RoukiGameOverImage";
 import ResultCard from "@/components/ResultCard";
 import StageCard from "@/components/StageCard";
 import TanakaStatusPanel from "@/components/TanakaStatusPanel";
-import { calculateBossRank, evaluateGuidance, getStatusLabel } from "@/lib/evaluator";
+import AppNav from "@/components/AppNav";
+import { useGameAudio } from "@/components/GameAudioProvider";
+import { calculateBossRank, evaluateGuidance } from "@/lib/evaluator";
+import { resolveEnding } from "@/lib/endings";
+import { persistPlayEnd, persistStageAttempt, persistStageReached } from "@/lib/game-progress";
 import { generateStage } from "@/lib/stage-generator";
 import {
   INITIAL_TANAKA_STATUS,
   applyTanakaDelta,
   calcTanakaDelta,
   checkGameOver,
-  getGameOverMessage,
 } from "@/lib/tanaka-state";
 import type {
   EvaluationResult,
@@ -37,7 +42,6 @@ type GamePhase = "playing" | "evaluating" | "result" | "finished" | "gameover";
 export default function GamePage() {
   const [stageNumber, setStageNumber] = useState(1);
   const [currentStage, setCurrentStage] = useState<Stage | null>(null);
-  const [usedTemplateIds, setUsedTemplateIds] = useState<string[]>([]);
   const [tanakaStatus, setTanakaStatus] = useState<TanakaStatus>(INITIAL_TANAKA_STATUS);
   const [lastTanakaDelta, setLastTanakaDelta] = useState<TanakaStatusDelta | null>(null);
   const [inputText, setInputText] = useState("");
@@ -51,18 +55,42 @@ export default function GamePage() {
   const [llmAvailable, setLlmAvailable] = useState(false);
   const [canProceed, setCanProceed] = useState(false);
   const [showRoukiFlash, setShowRoukiFlash] = useState(false);
+  const [showMentalBreakdownFlash, setShowMentalBreakdownFlash] = useState(false);
   const [lastEvaluatorSource, setLastEvaluatorSource] =
     useState<EvaluatorMode>("keyword");
+  const [usedLlmFallback, setUsedLlmFallback] = useState(false);
+  const { unlock, playSe, startBgm, playEndingAudio } = useGameAudio();
 
   const clearedCount = history.filter((h) => h.result.status === "clear").length;
+
+  function buildFinalResult(
+    allHistory: StageHistory[],
+    finalTanaka: TanakaStatus
+  ): FinalResult {
+    const avg =
+      allHistory.length > 0
+        ? allHistory.reduce((sum, h) => sum + h.result.harassmentScore, 0) /
+          allHistory.length
+        : 0;
+    const cleared = allHistory.filter((h) => h.result.status === "clear").length;
+    const endingInfo = resolveEnding(cleared, avg, finalTanaka, allHistory);
+    return calculateBossRank(
+      cleared,
+      MAX_STAGES,
+      avg,
+      finalTanaka,
+      endingInfo.id,
+      endingInfo.title,
+      endingInfo.description
+    );
+  }
 
   /** ゲーム初期化・ステージ生成 */
   const initGame = useCallback(() => {
     const initialTanaka = { ...INITIAL_TANAKA_STATUS };
-    const firstStage = generateStage(1, initialTanaka, []);
+    const firstStage = generateStage(1, initialTanaka);
     setStageNumber(1);
     setCurrentStage(firstStage);
-    setUsedTemplateIds([firstStage.templateId]);
     setTanakaStatus(initialTanaka);
     setLastTanakaDelta(null);
     setInputText("");
@@ -72,7 +100,10 @@ export default function GamePage() {
     setFinalResult(null);
     setGameOverReason(null);
     setShowRoukiFlash(false);
+    setShowMentalBreakdownFlash(false);
     setInputError("");
+    setUsedLlmFallback(false);
+    persistStageReached(1);
   }, []);
 
   useEffect(() => {
@@ -99,6 +130,13 @@ export default function GamePage() {
     return () => clearTimeout(timer);
   }, [showRoukiFlash]);
 
+  /** メンタル崩壊フラッシュを自動で消す */
+  useEffect(() => {
+    if (!showMentalBreakdownFlash) return;
+    const timer = setTimeout(() => setShowMentalBreakdownFlash(false), 2800);
+    return () => clearTimeout(timer);
+  }, [showMentalBreakdownFlash]);
+
   /** 結果アニメーション完了後に次へ進めるようにする */
   useEffect(() => {
     if (phase === "result" || phase === "gameover") {
@@ -108,6 +146,45 @@ export default function GamePage() {
     }
     setCanProceed(false);
   }, [phase, currentResult]);
+
+  /** BGM切り替え */
+  useEffect(() => {
+    if (phase === "playing") {
+      startBgm("play");
+    } else if (phase === "evaluating") {
+      startBgm("evaluating");
+    } else if (phase === "result") {
+      startBgm("play");
+    } else if (phase === "gameover") {
+      if (gameOverReason === "mental_breakdown") {
+        startBgm("mental_breakdown");
+      } else {
+        startBgm("game_over");
+      }
+    } else if (phase === "finished" && finalResult) {
+      playEndingAudio(finalResult.ending);
+    }
+  }, [phase, finalResult, gameOverReason, startBgm, playEndingAudio]);
+
+  /** 判定SE */
+  useEffect(() => {
+    if (phase === "result" && currentResult) {
+      if (currentResult.status === "clear") {
+        playSe("clear");
+      } else if (currentResult.status === "insufficient") {
+        playSe("insufficient");
+      }
+    }
+    if (phase === "gameover" && currentResult) {
+      if (currentResult.status === "labor_consultation") {
+        playSe("critical");
+      } else if (gameOverReason === "mental_breakdown") {
+        playSe("mental_breakdown");
+      } else {
+        playSe("game_over");
+      }
+    }
+  }, [phase, currentResult, gameOverReason, playSe]);
 
   /** 評価結果を反映してゲーム状態を更新 */
   function applyResult(result: EvaluationResult, trimmed: string, source: EvaluatorMode) {
@@ -125,6 +202,7 @@ export default function GamePage() {
     const entry: StageHistory = {
       stageId: currentStage.id,
       stageTitle: currentStage.title,
+      tier: currentStage.tier,
       inputText: trimmed,
       result,
       tanakaBefore,
@@ -134,23 +212,29 @@ export default function GamePage() {
     const allHistory = [...history, entry];
     setHistory(allHistory);
 
+    persistStageAttempt(
+      currentStage.id,
+      currentStage.tier,
+      currentStage.title,
+      result.status
+    );
+
     const overReason = checkGameOver(result, tanakaAfter);
     if (overReason) {
       setGameOverReason(overReason);
       if (overReason === "harassment") {
         setShowRoukiFlash(true);
       }
-      const avg =
-        allHistory.reduce((sum, h) => sum + h.result.harassmentScore, 0) /
-        allHistory.length;
-      setFinalResult(
-        calculateBossRank(
-          allHistory.filter((h) => h.result.status === "clear").length,
-          MAX_STAGES,
-          avg,
-          tanakaAfter
-        )
-      );
+      if (overReason === "mental_breakdown") {
+        setShowMentalBreakdownFlash(true);
+      }
+      const final = buildFinalResult(allHistory, tanakaAfter);
+      setFinalResult(final);
+      persistPlayEnd({
+        history: allHistory,
+        finalResult: final,
+        gameOverReason: overReason,
+      });
       setPhase("gameover");
     } else {
       setPhase("result");
@@ -166,6 +250,8 @@ export default function GamePage() {
       setInputError("指導文を入力してください。");
       return;
     }
+    await unlock();
+    playSe("submit");
     setInputError("");
     setPhase("evaluating");
 
@@ -173,6 +259,7 @@ export default function GamePage() {
       const runEvaluation = async (): Promise<{
         result: EvaluationResult;
         source: EvaluatorMode;
+        usedFallback?: boolean;
       }> => {
         if (evaluatorMode === "llm") {
           const res = await fetch("/api/evaluate", {
@@ -186,6 +273,8 @@ export default function GamePage() {
 
           const data = (await res.json()) as {
             result?: EvaluationResult;
+            source?: EvaluatorMode;
+            usedFallback?: boolean;
             error?: string;
           };
 
@@ -193,13 +282,20 @@ export default function GamePage() {
             throw new Error(data.error ?? "AI評価に失敗しました。");
           }
 
-          return { result: data.result, source: "llm" };
+          return {
+            result: data.result,
+            source: data.usedFallback ? "keyword" : (data.source ?? "llm"),
+            usedFallback: data.usedFallback,
+          };
         }
 
         return { result: evaluateGuidance(trimmed), source: "keyword" };
       };
 
-      const { result, source } = await waitForEvaluation(runEvaluation());
+      const { result, source, usedFallback } = await waitForEvaluation(
+        runEvaluation()
+      );
+      setUsedLlmFallback(Boolean(usedFallback));
       applyResult(result, trimmed, source);
     } catch (error) {
       const message =
@@ -211,17 +307,18 @@ export default function GamePage() {
 
   /** 次のステージへ進む */
   function handleNextStage() {
+    playSe("stage_advance");
     if (stageNumber >= MAX_STAGES) {
       finishGame();
       return;
     }
 
     const nextNumber = stageNumber + 1;
-    const nextStage = generateStage(nextNumber, tanakaStatus, usedTemplateIds);
+    const nextStage = generateStage(nextNumber, tanakaStatus);
+    persistStageReached(nextNumber);
 
     setStageNumber(nextNumber);
     setCurrentStage(nextStage);
-    setUsedTemplateIds((prev) => [...prev, nextStage.templateId]);
     setInputText("");
     setCurrentResult(null);
     setLastTanakaDelta(null);
@@ -231,18 +328,19 @@ export default function GamePage() {
 
   /** ゲーム終了処理 */
   function finishGame() {
-    const avg =
-      history.length > 0
-        ? history.reduce((sum, h) => sum + h.result.harassmentScore, 0) / history.length
-        : 0;
-    setFinalResult(
-      calculateBossRank(clearedCount, MAX_STAGES, avg, tanakaStatus)
-    );
+    const final = buildFinalResult(history, tanakaStatus);
+    setFinalResult(final);
+    persistPlayEnd({
+      history,
+      finalResult: final,
+      gameOverReason: null,
+    });
     setPhase("finished");
   }
 
   /** ゲームをリセット */
   function handleRestart() {
+    playSe("click");
     initGame();
   }
 
@@ -259,6 +357,7 @@ export default function GamePage() {
   return (
     <div className="min-h-dvh overflow-x-hidden bg-indigo-950">
       <RoukiFullScreenFlash show={showRoukiFlash} />
+      <MentalBreakdownFullScreenFlash show={showMentalBreakdownFlash} />
 
       {/* ゲーム背景パターン */}
       <div
@@ -286,6 +385,9 @@ export default function GamePage() {
               <p className="mt-2 inline-block border-2 border-orange-500 bg-orange-600 px-4 py-1 text-sm font-black text-white sm:text-base">
                 ハラスメント80点を超えるな！
               </p>
+              <div className="mt-4 flex justify-center">
+                <AppNav current="game" />
+              </div>
             </header>
 
             {/* ゲーム説明（プレイ中のみ） */}
@@ -308,10 +410,10 @@ export default function GamePage() {
                     <li>・ハラスメント度が80点以上 → 即ゲームオーバー</li>
                     <li>・田中の精神衛生度が0 → メンタル崩壊ゲームオーバー</li>
                     <li>
-                      ・具体性または改善提案が30点未満 → 指導不足（ステージ失敗）
+                      ・問題点の明確さまたは改善行動の具体性が30点未満 → 指導不足（ステージ失敗）
                     </li>
-                    <li>・田中の状態に応じて、毎回異なるミスが発生します</li>
-                    <li>・全7ステージクリアでゲームクリア！</li>
+                    <li>・田中の状態が悪いほど、ミスがエスカレートします</li>
+                    <li>・全5ステージ完走でエンディングが表示されます</li>
                   </ul>
                 </section>
               )}
@@ -451,6 +553,7 @@ export default function GamePage() {
                 <ResultCard
                   result={currentResult}
                   evaluatorSource={lastEvaluatorSource}
+                  usedLlmFallback={usedLlmFallback}
                 />
                 <button
                   type="button"
@@ -492,6 +595,7 @@ export default function GamePage() {
                 <ResultCard
                   result={currentResult}
                   evaluatorSource={lastEvaluatorSource}
+                  usedLlmFallback={usedLlmFallback}
                 />
                 <FinalScreen
                   finalResult={finalResult}
@@ -523,210 +627,6 @@ export default function GamePage() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// 最終結果画面
-// ---------------------------------------------------------------------------
-
-type FinalScreenProps = {
-  finalResult: FinalResult;
-  history: StageHistory[];
-  isGameOver: boolean;
-  allCleared?: boolean;
-  gameOverReason?: GameOverReason;
-  onRestart: () => void;
-};
-
-function FinalScreen({
-  finalResult,
-  history,
-  isGameOver,
-  allCleared,
-  gameOverReason,
-  onRestart,
-}: FinalScreenProps) {
-  const rankColors: Record<string, string> = {
-    S: "text-yellow-600 bg-yellow-50 border-yellow-300",
-    A: "text-indigo-600 bg-indigo-50 border-indigo-300",
-    B: "text-emerald-600 bg-emerald-50 border-emerald-300",
-    C: "text-orange-600 bg-orange-50 border-orange-300",
-    D: "text-red-600 bg-red-50 border-red-300",
-  };
-
-  const rankStyle = rankColors[finalResult.rank] ?? rankColors.D;
-
-  return (
-    <div className="space-y-6">
-      {/* 労基ゲームオーバー（ハラスメント） */}
-      {isGameOver && gameOverReason === "harassment" && (
-        <RoukiGameOverImage variant="full" />
-      )}
-
-      {/* タイトル */}
-      <div
-        className={`border-4 p-6 text-center ${
-          isGameOver
-            ? "border-red-500 bg-red-900"
-            : allCleared
-              ? "border-emerald-500 bg-emerald-900"
-              : "border-indigo-500 bg-indigo-800"
-        }`}
-      >
-        <p className="mb-1 text-xs font-black tracking-[0.3em] text-yellow-400">
-          {isGameOver ? "GAME OVER" : allCleared ? "ALL CLEAR" : "END"}
-        </p>
-        <h2
-          className={`text-2xl font-black sm:text-3xl ${
-            isGameOver
-              ? "text-red-300"
-              : allCleared
-                ? "text-emerald-300"
-                : "text-white"
-          }`}
-        >
-          {isGameOver
-            ? "ゲームオーバー"
-            : allCleared
-              ? "ゲームクリア！"
-              : "ゲーム終了"}
-        </h2>
-        <p className="mt-2 text-base text-indigo-200">
-          {isGameOver
-            ? getGameOverMessage(gameOverReason ?? "harassment")
-            : allCleared
-              ? "全ステージをクリアしました！田中も成長しました。"
-              : "お疲れさまでした。結果を確認しましょう。"}
-        </p>
-      </div>
-
-      {/* 田中の最終ステータス */}
-      <TanakaStatusPanel status={finalResult.finalTanakaStatus} compact />
-
-      {/* 総合スコア */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <StatBox
-          label="平均ハラスメント度"
-          value={`${finalResult.averageHarassment}点`}
-          highlight={finalResult.averageHarassment >= 40}
-        />
-        <StatBox
-          label="クリアステージ"
-          value={`${finalResult.clearedCount} / ${finalResult.totalStages}`}
-        />
-        <div
-          className={`col-span-2 border p-4 text-center sm:col-span-1 ${rankStyle}`}
-        >
-          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">
-            上司ランク
-          </p>
-          <p className="text-4xl font-black">{finalResult.rank}</p>
-          <p className="text-sm font-medium">{finalResult.rankLabel}</p>
-        </div>
-      </div>
-
-      {/* ステージ履歴 */}
-      <div className="border-2 border-indigo-500 bg-indigo-800 p-4 sm:p-5">
-        <h3 className="mb-4 flex items-center gap-2 text-lg font-black text-yellow-300">
-          <span className="border border-yellow-400 px-2 py-0.5 text-xs">LOG</span>
-          ステージ履歴
-        </h3>
-        <div className="space-y-3">
-          {history.map((entry, index) => (
-            <div
-              key={`${entry.stageId}-${index}`}
-              className="border-2 border-indigo-600 bg-indigo-900 p-3 sm:p-4"
-            >
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <span className="text-sm font-bold text-indigo-200">
-                  ステージ{entry.stageId}：{entry.stageTitle}
-                </span>
-                <span
-                  className={`rounded-sm px-2 py-0.5 text-xs font-bold text-white ${
-                    entry.result.status === "clear"
-                      ? "bg-emerald-600"
-                      : entry.result.status === "insufficient"
-                        ? "bg-yellow-600"
-                        : "bg-red-600"
-                  }`}
-                >
-                  {getStatusLabel(entry.result.status)}
-                </span>
-              </div>
-              <p className="mb-2 text-sm text-indigo-300">
-                入力：「{entry.inputText}」
-              </p>
-              <div className="flex flex-wrap gap-3 text-xs text-indigo-400">
-                <span>ハラスメント {entry.result.harassmentScore}点</span>
-                <span>具体性 {entry.result.specificityScore}点</span>
-                <span>改善提案 {entry.result.improvementScore}点</span>
-                <span>納得度 {entry.result.satisfactionScore}点</span>
-                <span>
-                  精神衛生 {entry.tanakaAfter.mentalHealth}
-                  ({entry.tanakaDelta.mentalHealth >= 0 ? "+" : ""}
-                  {entry.tanakaDelta.mentalHealth})
-                </span>
-                <span>
-                  意識 {entry.tanakaAfter.awarenessLevel}
-                  ({entry.tanakaDelta.awarenessLevel >= 0 ? "+" : ""}
-                  {entry.tanakaDelta.awarenessLevel})
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* もう一度遊ぶ */}
-      <button
-        type="button"
-        onClick={onRestart}
-        className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[8px] bg-orange-500 px-6 py-3 text-base font-black text-white hover:bg-orange-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          className="h-5 w-5"
-          aria-hidden="true"
-        >
-          <path
-            fillRule="evenodd"
-            d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466A5.5 5.5 0 1116 9.75M12.75 9.75V4.5"
-            clipRule="evenodd"
-          />
-        </svg>
-        もう一度遊ぶ
-      </button>
-    </div>
-  );
-}
-
-function StatBox({
-  label,
-  value,
-  highlight = false,
-}: {
-  label: string;
-  value: string;
-  highlight?: boolean;
-}) {
-  return (
-    <div
-      className={`border-2 p-4 text-center ${
-        highlight
-          ? "border-orange-500 bg-orange-900"
-          : "border-indigo-500 bg-indigo-800"
-      }`}
-    >
-      <p className="text-xs font-bold text-indigo-300">{label}</p>
-      <p
-        className={`mt-1 text-xl font-black ${highlight ? "text-orange-300" : "text-white"}`}
-      >
-        {value}
-      </p>
     </div>
   );
 }
