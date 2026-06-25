@@ -85,13 +85,12 @@ export default function StageCard({
             ※ 田中の精神状態が不安定です ※
           </p>
         )}
-        <div className={isChaos ? "animate-[pulse_2s_ease-in-out_infinite]" : ""}>
-          <NpcDialogue
-            message={stage.npcLine}
-            mood={isChaos ? "shocked" : mood}
-            speakerLabel="部下・田中"
-          />
-        </div>
+        <NpcDialogue
+          message={stage.npcLine}
+          mood={isChaos ? "crying" : mood}
+          speakerLabel="部下・田中"
+          chaosMode={isChaos}
+        />
       </div>
     </div>
   );

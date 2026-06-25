@@ -14,6 +14,7 @@ type ResultCardProps = {
   evaluatorSource?: "keyword" | "llm";
   usedLlmFallback?: boolean;
   llmFallbackReason?: string;
+  chaosMode?: boolean;
 };
 
 function getStatusStyles(status: EvaluationResult["status"]) {
@@ -88,6 +89,7 @@ export default function ResultCard({
   evaluatorSource,
   usedLlmFallback,
   llmFallbackReason,
+  chaosMode = false,
 }: ResultCardProps) {
   const reducedMotion = useReducedMotion() ?? false;
   const styles = getStatusStyles(result.status);
@@ -282,6 +284,7 @@ export default function ResultCard({
                 message={result.npcReaction}
                 mood={npcMood}
                 speakerLabel="部下・田中"
+                chaosMode={chaosMode}
               />
             </motion.div>
 

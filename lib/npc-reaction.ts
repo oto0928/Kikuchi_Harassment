@@ -4,9 +4,17 @@ import {
   THREAT_WORDS,
 } from "@/lib/evaluator-params";
 import { findInstantHarassmentWords } from "@/lib/instant-harassment";
-import type { EvaluationResult } from "@/types/game";
+import type { EvaluationResult, StageTier } from "@/types/game";
+
+export type NpcReactionOptions = {
+  stageTier?: StageTier;
+};
 
 type RiskSeverity = "severe" | "strong" | "mild" | "none";
+
+function isChaosMode(options?: NpcReactionOptions): boolean {
+  return options?.stageTier === "t4";
+}
 
 function pickFromPool(pool: string[], seed: string): string {
   if (pool.length === 0) return "";
@@ -219,7 +227,14 @@ export type NpcMood =
   | "shocked"
   | "crying";
 
-export function getNpcMoodFromResult(result: EvaluationResult): NpcMood {
+export function getNpcMoodFromResult(
+  result: EvaluationResult,
+  options?: NpcReactionOptions
+): NpcMood {
+  if (isChaosMode(options)) {
+    return "crying";
+  }
+
   const severity = classifyRiskSeverity(result.matchedRiskWords);
 
   if (

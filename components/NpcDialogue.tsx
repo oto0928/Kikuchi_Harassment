@@ -3,11 +3,18 @@ import type { NpcMood } from "@/lib/npc-reaction";
 
 export type { NpcMood };
 
+const PORTRAIT = {
+  default: "/images/subordinate.png",
+  chaos: "/images/subordinate-chaos.png",
+} as const;
+
 type NpcDialogueProps = {
   message: string;
   mood?: NpcMood;
   /** 吹き出しのラベル（省略時は「部下」） */
   speakerLabel?: string;
+  /** T4カオスモード：泣き崩れ立ち絵を使用 */
+  chaosMode?: boolean;
 };
 
 const MOOD_STYLES: Record<
@@ -69,26 +76,49 @@ export default function NpcDialogue({
   message,
   mood = "normal",
   speakerLabel = "部下・田中",
+  chaosMode = false,
 }: NpcDialogueProps) {
   const styles = MOOD_STYLES[mood];
   const isCrying = mood === "crying";
+  const portraitSrc = chaosMode ? PORTRAIT.chaos : PORTRAIT.default;
+  const showTearOverlay = isCrying && !chaosMode;
 
   return (
     <div className="flex w-full flex-col items-center gap-3 sm:flex-row sm:items-end sm:gap-4">
       {/* キャラクター */}
       <div className="relative shrink-0 sm:order-1">
-        <div className="overflow-hidden border-4 border-indigo-700 bg-indigo-100">
+        <div
+          className={`overflow-hidden border-4 ${
+            chaosMode
+              ? "border-orange-600 bg-orange-100"
+              : "border-indigo-700 bg-indigo-100"
+          }`}
+        >
           <Image
-            src="/images/subordinate.png"
-            alt="部下キャラクター"
-            width={160}
-            height={200}
-            className={`h-[140px] w-[112px] object-cover object-top sm:h-[180px] sm:w-[144px] ${styles.imageFilter}`}
+            src={portraitSrc}
+            alt={
+              chaosMode
+                ? "部下・田中（カオスモード・泣き崩れ）"
+                : "部下キャラクター"
+            }
+            width={chaosMode ? 512 : 160}
+            height={chaosMode ? 431 : 200}
+            className={`h-[140px] w-[112px] sm:h-[180px] sm:w-[144px] ${
+              chaosMode
+                ? "object-cover object-[center_20%]"
+                : `object-cover object-top ${styles.imageFilter}`
+            }`}
             priority
           />
-          {isCrying && <TearOverlay />}
+          {showTearOverlay && <TearOverlay />}
         </div>
-        <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap border-2 border-indigo-800 bg-indigo-700 px-2 py-0.5 text-xs font-bold text-white">
+        <span
+          className={`absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap border-2 px-2 py-0.5 text-xs font-bold text-white ${
+            chaosMode
+              ? "border-orange-800 bg-orange-700"
+              : "border-indigo-800 bg-indigo-700"
+          }`}
+        >
           {speakerLabel}
         </span>
       </div>

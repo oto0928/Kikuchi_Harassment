@@ -29,6 +29,10 @@ import {
 } from "@/lib/game-session";
 import { generateStage } from "@/lib/stage-generator";
 import {
+  getKikuchiModelGuidance,
+  hasKikuchiModelGuidance,
+} from "@/lib/kikuchi-model-guidance";
+import {
   INITIAL_TANAKA_STATUS,
   applyTanakaDelta,
   calcTanakaDelta,
@@ -446,6 +450,15 @@ export default function GamePage() {
     setPhase("finished");
   }
 
+  /** 菊池先生のお手本を入力欄に挿入 */
+  function handleInsertKikuchiModel() {
+    const text = getKikuchiModelGuidance(stageNumber);
+    if (!text) return;
+    playSe("click");
+    setInputText(text);
+    setInputError("");
+  }
+
   /** ゲームをリセット */
   function handleRestart() {
     playSe("click");
@@ -611,15 +624,35 @@ export default function GamePage() {
                       )}
                     </div>
 
-                    <label
-                      htmlFor="guidance-input"
-                      className="mb-2 flex items-center gap-2 text-base font-black text-yellow-300"
-                    >
-                      <span className="border border-yellow-400 px-2 py-0.5 text-xs text-yellow-400">
-                        INPUT
-                      </span>
-                      あなたの指導文
-                    </label>
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <label
+                        htmlFor="guidance-input"
+                        className="flex items-center gap-2 text-base font-black text-yellow-300"
+                      >
+                        <span className="border border-yellow-400 px-2 py-0.5 text-xs text-yellow-400">
+                          INPUT
+                        </span>
+                        あなたの指導文
+                      </label>
+                      {hasKikuchiModelGuidance(stageNumber) && (
+                        <button
+                          type="button"
+                          onClick={handleInsertKikuchiModel}
+                          className="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-[6px] border-2 border-sky-400 bg-sky-600 px-3 py-1.5 text-xs font-black text-white hover:bg-sky-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400 sm:text-sm"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            className="h-4 w-4"
+                            aria-hidden="true"
+                          >
+                            <path d="M15.98 1.804a1 1 0 00-1.96 0l-.24 1.192a1 1 0 01-.784.785l-1.192.24a1 1 0 000 1.962l1.192.24a1 1 0 01.785.784l.24 1.192a1 1 0 001.962 0l.24-1.192a1 1 0 01.785-.784l1.192-.24a1 1 0 000-1.962l-1.192-.24a1 1 0 01-.784-.785l-.24-1.192zM12.12 8.012a1 1 0 00-1.96 0l-.144.712a1 1 0 01-.784.785l-.712.144a1 1 0 000 1.962l.712.144a1 1 0 01.785.784l.144.712a1 1 0 001.962 0l.144-.712a1 1 0 01.785-.784l.712-.144a1 1 0 000-1.962l-.712-.144a1 1 0 01-.784-.785l-.144-.712z" />
+                          </svg>
+                          菊池先生のお手本
+                        </button>
+                      )}
+                    </div>
                     <textarea
                       id="guidance-input"
                       value={inputText}
@@ -684,6 +717,7 @@ export default function GamePage() {
                   evaluatorSource={lastEvaluatorSource}
                   usedLlmFallback={usedLlmFallback}
                   llmFallbackReason={llmFallbackReason}
+                  chaosMode={currentStage.tier === "t4"}
                 />
                 <button
                   type="button"
@@ -727,6 +761,7 @@ export default function GamePage() {
                   evaluatorSource={lastEvaluatorSource}
                   usedLlmFallback={usedLlmFallback}
                   llmFallbackReason={llmFallbackReason}
+                  chaosMode={currentStage.tier === "t4"}
                 />
                 <FinalScreen
                   finalResult={finalResult}
