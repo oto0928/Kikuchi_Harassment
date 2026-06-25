@@ -2,8 +2,9 @@
 
 import NpcDialogue, { getNpcMoodFromResult } from "@/components/NpcDialogue";
 import RoukiGameOverImage from "@/components/RoukiGameOverImage";
-import ScoreBar from "@/components/ScoreBar";
+import ScoreHintRow from "@/components/ScoreHintRow";
 import { getStatusLabel } from "@/lib/evaluator";
+import type { ScoreHintKey } from "@/lib/score-hints";
 import type { EvaluationResult } from "@/types/game";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -41,13 +42,18 @@ function getStatusStyles(status: EvaluationResult["status"]) {
   }
 }
 
-const SCORE_ITEMS = [
+const SCORE_ITEMS: Array<{
+  key: ScoreHintKey;
+  label: string;
+  dangerMode?: boolean;
+  lowIsBad?: boolean;
+}> = [
   { key: "harassment", label: "ハラスメント度", dangerMode: true },
   { key: "problemClarity", label: "問題点の明確さ", lowIsBad: true },
   { key: "actionSpecificity", label: "改善行動の具体性", lowIsBad: true },
   { key: "dialogue", label: "対話・確認", lowIsBad: true },
   { key: "support", label: "支援・再発防止", lowIsBad: true },
-] as const;
+];
 
 function getScoreValue(result: EvaluationResult, key: string): number {
   switch (key) {
@@ -235,12 +241,13 @@ export default function ResultCard({
               </p>
               <div className="space-y-4">
                 {SCORE_ITEMS.map((item, index) => (
-                  <ScoreBar
+                  <ScoreHintRow
                     key={item.key}
+                    hintKey={item.key}
                     label={item.label}
                     score={getScoreValue(result, item.key)}
-                    dangerMode={"dangerMode" in item ? item.dangerMode : false}
-                    lowIsBad={"lowIsBad" in item ? item.lowIsBad : false}
+                    dangerMode={item.dangerMode}
+                    lowIsBad={item.lowIsBad}
                     delay={0.2 + index * 0.35}
                     animateScore
                   />

@@ -2,6 +2,7 @@
 
 import EndingCinematic from "@/components/EndingCinematic";
 import MentalBreakdownGameOverImage from "@/components/MentalBreakdownGameOverImage";
+import RankRevealCinematic from "@/components/RankRevealCinematic";
 import { useOptionalGameAudio } from "@/components/GameAudioProvider";
 import RoukiGameOverImage from "@/components/RoukiGameOverImage";
 import TanakaStatusPanel from "@/components/TanakaStatusPanel";
@@ -24,13 +25,7 @@ type FinalScreenProps = {
   onRestart: () => void;
 };
 
-const rankColors: Record<string, string> = {
-  S: "text-yellow-600 bg-yellow-50 border-yellow-300",
-  A: "text-indigo-600 bg-indigo-50 border-indigo-300",
-  B: "text-emerald-600 bg-emerald-50 border-emerald-300",
-  C: "text-orange-600 bg-orange-50 border-orange-300",
-  D: "text-red-600 bg-red-50 border-red-300",
-};
+type FinalPhase = "intro" | "rank" | "details";
 
 function StatBox({
   label,
@@ -75,109 +70,92 @@ export default function FinalScreen({
   onRestart,
 }: FinalScreenProps) {
   const reducedMotion = useReducedMotion() ?? false;
-  const [showDetails, setShowDetails] = useState(reducedMotion);
-  const rankStyle = rankColors[finalResult.rank] ?? rankColors.D;
   const audio = useOptionalGameAudio();
+  const [phase, setPhase] = useState<FinalPhase>(
+    reducedMotion ? "details" : "intro"
+  );
 
   useEffect(() => {
-    if (isGameOver && gameOverReason === "harassment") {
-      setShowDetails(true);
-    }
-  }, [isGameOver, gameOverReason]);
+    if (reducedMotion) return;
 
-  const detailsDelay = reducedMotion ? 0 : 2.8;
-  const showStats =
-    showDetails || (isGameOver && gameOverReason === "harassment");
+    if (isGameOver && gameOverReason === "harassment") {
+      const timer = setTimeout(() => setPhase("rank"), 2400);
+      return () => clearTimeout(timer);
+    }
+  }, [isGameOver, gameOverReason, reducedMotion]);
+
+  const showIntro = phase === "intro";
+  const showRank = phase === "rank";
+  const showDetails = phase === "details";
 
   return (
     <div className="space-y-6">
-      {isGameOver && gameOverReason === "harassment" && (
+      {showIntro && isGameOver && gameOverReason === "harassment" && (
         <RoukiGameOverImage variant="full" />
       )}
 
-      {isGameOver && gameOverReason === "mental_breakdown" && (
+      {showIntro && isGameOver && gameOverReason === "mental_breakdown" && (
         <MentalBreakdownGameOverImage
           variant="full"
-          onSequenceComplete={() => setShowDetails(true)}
+          onSequenceComplete={() => setPhase("rank")}
         />
       )}
 
-      {!isGameOver ? (
+      {showIntro && !isGameOver && (
         <EndingCinematic
           ending={finalResult.ending}
           title={finalResult.endingTitle}
           description={finalResult.endingDescription}
           isGameOver={false}
           allCleared={allCleared}
-          onSequenceComplete={() => setShowDetails(true)}
+          onSequenceComplete={() => setPhase("rank")}
         />
-      ) : null}
+      )}
+
+      {showRank && (
+        <RankRevealCinematic
+          rank={finalResult.rank}
+          rankLabel={finalResult.rankLabel}
+          onComplete={() => setPhase("details")}
+        />
+      )}
 
       <motion.div
         initial={false}
         animate={
-          showStats ? { opacity: 1, y: 0 } : { opacity: 0, y: 32 }
+          showDetails ? { opacity: 1, y: 0 } : { opacity: 0, y: 32 }
         }
-        transition={{ duration: 0.5, delay: showStats && isGameOver ? 0.2 : 0 }}
+        transition={{ duration: 0.5 }}
       >
-        {showStats && (
+        {showDetails && (
           <>
             <motion.div
               initial={reducedMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: detailsDelay }}
+              transition={{ delay: 0.1 }}
             >
               <TanakaStatusPanel status={finalResult.finalTanakaStatus} compact />
             </motion.div>
 
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="mt-6 grid grid-cols-2 gap-3">
               <StatBox
                 label="平均ハラスメント度"
                 value={`${finalResult.averageHarassment}点`}
                 highlight={finalResult.averageHarassment >= 40}
-                delay={detailsDelay + 0.1}
+                delay={0.15}
               />
               <StatBox
                 label="クリアステージ"
                 value={`${finalResult.clearedCount} / ${finalResult.totalStages}`}
-                delay={detailsDelay + 0.2}
+                delay={0.25}
               />
-              <motion.div
-                className={`col-span-2 border p-4 text-center sm:col-span-1 ${rankStyle}`}
-                initial={reducedMotion ? false : { opacity: 0, scale: 0.5, rotate: -5 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                transition={{
-                  delay: detailsDelay + 0.35,
-                  type: "spring",
-                  stiffness: 320,
-                  damping: 16,
-                }}
-              >
-                <p className="text-xs font-semibold uppercase tracking-wide opacity-70">
-                  上司ランク
-                </p>
-                <motion.p
-                  className="text-4xl font-black"
-                  initial={reducedMotion ? false : { scale: 2, opacity: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{
-                    delay: detailsDelay + 0.5,
-                    type: "spring",
-                    stiffness: 400,
-                    damping: 14,
-                  }}
-                >
-                  {finalResult.rank}
-                </motion.p>
-                <p className="text-sm font-medium">{finalResult.rankLabel}</p>
-              </motion.div>
             </div>
 
             <motion.div
               className="mt-6 border-2 border-indigo-500 bg-indigo-800 p-4 sm:p-5"
               initial={reducedMotion ? false : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: detailsDelay + 0.5 }}
+              transition={{ delay: 0.35 }}
             >
               <h3 className="mb-4 flex items-center gap-2 text-lg font-black text-yellow-300">
                 <span className="border border-yellow-400 px-2 py-0.5 text-xs">
@@ -189,16 +167,32 @@ export default function FinalScreen({
                 {history.map((entry, index) => (
                   <motion.div
                     key={`${entry.stageId}-${index}`}
-                    className="border-2 border-indigo-600 bg-indigo-900 p-3 sm:p-4"
+                    className={`border-2 p-3 sm:p-4 ${
+                      entry.tier === "t4"
+                        ? "border-orange-600 bg-orange-950"
+                        : "border-indigo-600 bg-indigo-900"
+                    }`}
                     initial={reducedMotion ? false : { opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: detailsDelay + 0.6 + index * 0.08 }}
+                    transition={{ delay: 0.4 + index * 0.08 }}
                   >
                     <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-bold text-indigo-200">
+                      <span
+                        className={`text-sm font-bold ${
+                          entry.tier === "t4"
+                            ? "text-orange-200"
+                            : "text-indigo-200"
+                        }`}
+                      >
                         ステージ{entry.stageId}：{entry.stageTitle}
                         {entry.tier !== "t1" && (
-                          <span className="ml-1 text-xs text-amber-400">
+                          <span
+                            className={`ml-1 text-xs ${
+                              entry.tier === "t4"
+                                ? "font-black text-orange-400"
+                                : "text-amber-400"
+                            }`}
+                          >
                             [{entry.tier.toUpperCase()}]
                           </span>
                         )}
@@ -246,7 +240,7 @@ export default function FinalScreen({
               className="mt-6 flex flex-col gap-3 sm:flex-row"
               initial={reducedMotion ? false : { opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: detailsDelay + 0.9 }}
+              transition={{ delay: 0.6 }}
             >
               <Link
                 href="/achievements"

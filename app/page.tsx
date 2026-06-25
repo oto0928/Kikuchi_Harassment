@@ -13,6 +13,8 @@ import RoukiGameOverImage, {
 import ResultCard from "@/components/ResultCard";
 import StageCard from "@/components/StageCard";
 import TanakaStatusPanel from "@/components/TanakaStatusPanel";
+import T4ChaosEffects from "@/components/T4ChaosEffects";
+import T4StageIntro from "@/components/T4StageIntro";
 import AppNav from "@/components/AppNav";
 import { useGameAudio } from "@/components/GameAudioProvider";
 import { calculateBossRank, evaluateGuidance } from "@/lib/evaluator";
@@ -60,6 +62,7 @@ export default function GamePage() {
     useState<EvaluatorMode>("keyword");
   const [usedLlmFallback, setUsedLlmFallback] = useState(false);
   const [llmFallbackReason, setLlmFallbackReason] = useState<string | undefined>();
+  const [showT4Intro, setShowT4Intro] = useState(false);
   const { unlock, playSe, startBgm, playEndingAudio } = useGameAudio();
 
   const clearedCount = history.filter((h) => h.result.status === "clear").length;
@@ -105,6 +108,7 @@ export default function GamePage() {
     setInputError("");
     setUsedLlmFallback(false);
     setLlmFallbackReason(undefined);
+    setShowT4Intro(false);
     persistStageReached(1);
   }, []);
 
@@ -151,12 +155,14 @@ export default function GamePage() {
 
   /** BGM切り替え */
   useEffect(() => {
+    const isChaosStage = currentStage?.tier === "t4";
+
     if (phase === "playing") {
-      startBgm("play");
+      startBgm(isChaosStage ? "chaos_play" : "play");
     } else if (phase === "evaluating") {
       startBgm("evaluating");
     } else if (phase === "result") {
-      startBgm("play");
+      startBgm(isChaosStage ? "chaos_play" : "play");
     } else if (phase === "gameover") {
       if (gameOverReason === "mental_breakdown") {
         startBgm("mental_breakdown");
@@ -166,7 +172,15 @@ export default function GamePage() {
     } else if (phase === "finished" && finalResult) {
       playEndingAudio(finalResult.ending);
     }
-  }, [phase, finalResult, gameOverReason, startBgm, playEndingAudio]);
+  }, [phase, finalResult, gameOverReason, startBgm, playEndingAudio, currentStage?.tier]);
+
+  /** T4ステージ突入時のイントロ演出 */
+  useEffect(() => {
+    if (phase !== "playing" || !currentStage) return;
+    if (currentStage.tier === "t4") {
+      setShowT4Intro(true);
+    }
+  }, [phase, currentStage?.id, currentStage?.tier]);
 
   /** 判定SE */
   useEffect(() => {
@@ -327,6 +341,7 @@ export default function GamePage() {
     setInputText("");
     setCurrentResult(null);
     setLastTanakaDelta(null);
+    setShowT4Intro(nextStage.tier === "t4");
     setPhase("playing");
     setInputError("");
   }
@@ -359,10 +374,20 @@ export default function GamePage() {
     );
   }
 
+  const isChaosStage = currentStage.tier === "t4";
+
   return (
     <div className="min-h-dvh overflow-x-hidden bg-indigo-950">
       <RoukiFullScreenFlash show={showRoukiFlash} />
       <MentalBreakdownFullScreenFlash show={showMentalBreakdownFlash} />
+      <T4StageIntro
+        show={showT4Intro}
+        stageNumber={stageNumber}
+        onComplete={() => setShowT4Intro(false)}
+      />
+      {isChaosStage && !isGameEnded && !showT4Intro && (
+        <T4ChaosEffects active variant="full" />
+      )}
 
       {/* ゲーム背景パターン */}
       <div
@@ -433,6 +458,7 @@ export default function GamePage() {
                   totalStages={MAX_STAGES}
                   clearedCount={clearedCount}
                   stageTitle={currentStage.title}
+                  tier={currentStage.tier}
                 />
 
                 <StageCard

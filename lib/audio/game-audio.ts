@@ -11,10 +11,15 @@ export type SeId =
   | "ending_neutral"
   | "ending_neglect"
   | "ending_chaos"
-  | "mental_breakdown";
+  | "mental_breakdown"
+  | "chaos_alert"
+  | "rank_tick"
+  | "rank_reveal"
+  | "rank_s";
 
 export type BgmId =
   | "play"
+  | "chaos_play"
   | "evaluating"
   | "ending_growth"
   | "ending_model"
@@ -281,6 +286,33 @@ class GameAudioManager {
           { freq: 220, dur: 0.35, vol: 0.08, type: "sine" },
         ]);
         break;
+      case "chaos_alert":
+        this.playSequence([
+          { freq: 880, dur: 0.08, vol: 0.16, type: "square" },
+          { freq: 440, dur: 0.08, vol: 0.14, type: "square" },
+          { freq: 880, dur: 0.08, vol: 0.16, type: "square" },
+          { freq: 220, dur: 0.15, vol: 0.12, type: "sawtooth" },
+        ]);
+        break;
+      case "rank_tick":
+        this.playTone({ frequency: 520, duration: 0.04, volume: 0.1, type: "square" });
+        break;
+      case "rank_reveal":
+        this.playSequence([
+          { freq: 392, dur: 0.08, vol: 0.14, type: "triangle" },
+          { freq: 523.25, dur: 0.1, vol: 0.16, type: "triangle" },
+          { freq: 659.25, dur: 0.14, vol: 0.18, type: "triangle" },
+        ]);
+        break;
+      case "rank_s":
+        this.playSequence([
+          { freq: 523.25, dur: 0.08, vol: 0.16, type: "triangle" },
+          { freq: 659.25, dur: 0.08, vol: 0.16, type: "triangle" },
+          { freq: 783.99, dur: 0.08, vol: 0.18, type: "triangle" },
+          { freq: 987.77, dur: 0.1, vol: 0.2, type: "triangle" },
+          { freq: 1174.66, dur: 0.2, vol: 0.22, type: "triangle" },
+        ]);
+        break;
     }
   }
 
@@ -312,6 +344,12 @@ class GameAudioManager {
         interval: 720,
         volume: 0.14,
         type: "triangle",
+      },
+      chaos_play: {
+        notes: [440, 523.25, 622.25, 466.16, 554.37],
+        interval: 380,
+        volume: 0.13,
+        type: "square",
       },
       evaluating: {
         notes: [220, 277.18, 329.63],

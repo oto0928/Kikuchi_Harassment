@@ -3,6 +3,7 @@ type GameHudProps = {
   totalStages: number;
   clearedCount: number;
   stageTitle: string;
+  tier?: string;
 };
 
 export default function GameHud({
@@ -10,15 +11,29 @@ export default function GameHud({
   totalStages,
   clearedCount,
   stageTitle,
+  tier,
 }: GameHudProps) {
   const progressPercent = ((currentStage) / totalStages) * 100;
+  const isChaos = tier === "t4";
 
   return (
-    <div className="mb-4 border-4 border-indigo-800 bg-indigo-900 p-3 sm:p-4">
+    <div
+      className={`mb-4 border-4 p-3 sm:p-4 ${
+        isChaos
+          ? "border-orange-600 bg-orange-950"
+          : "border-indigo-800 bg-indigo-900"
+      }`}
+    >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="border-2 border-yellow-400 bg-yellow-400 px-2 py-0.5 text-xs font-black tracking-wider text-indigo-900 sm:text-sm">
-            STAGE
+          <span
+            className={`border-2 px-2 py-0.5 text-xs font-black tracking-wider sm:text-sm ${
+              isChaos
+                ? "border-orange-400 bg-orange-500 text-white"
+                : "border-yellow-400 bg-yellow-400 text-indigo-900"
+            }`}
+          >
+            {isChaos ? "CHAOS" : "STAGE"}
           </span>
           <span className="text-xl font-black tabular-nums text-white sm:text-2xl">
             {currentStage}
@@ -70,19 +85,43 @@ export default function GameHud({
         })}
       </div>
 
-      <p className="text-center text-sm font-bold text-yellow-300 sm:text-base">
+      <p
+        className={`text-center text-sm font-bold sm:text-base ${
+          isChaos ? "text-orange-300" : "text-yellow-300"
+        }`}
+      >
         {stageTitle}
       </p>
 
       {/* 危険ライン表示 */}
-      <div className="mt-3 flex items-center gap-2 border-2 border-red-500 bg-red-950 px-3 py-2">
-        <span className="animate-pulse text-xs font-black text-red-400 sm:text-sm">
-          DANGER
+      <div
+        className={`mt-3 flex items-center gap-2 border-2 px-3 py-2 ${
+          isChaos
+            ? "border-orange-500 bg-orange-900"
+            : "border-red-500 bg-red-950"
+        }`}
+      >
+        <span
+          className={`animate-pulse text-xs font-black sm:text-sm ${
+            isChaos ? "text-orange-400" : "text-red-400"
+          }`}
+        >
+          {isChaos ? "CHAOS" : "DANGER"}
         </span>
-        <div className="h-2 flex-1 overflow-hidden border border-red-700 bg-red-900">
-          <div className="h-full w-[80%] bg-red-500" />
+        <div
+          className={`h-2 flex-1 overflow-hidden border ${
+            isChaos ? "border-orange-700 bg-orange-900" : "border-red-700 bg-red-900"
+          }`}
+        >
+          <div
+            className={`h-full w-[80%] ${isChaos ? "bg-orange-500" : "bg-red-500"}`}
+          />
         </div>
-        <span className="whitespace-nowrap text-xs font-bold text-red-300">
+        <span
+          className={`whitespace-nowrap text-xs font-bold ${
+            isChaos ? "text-orange-300" : "text-red-300"
+          }`}
+        >
           80点でGO
         </span>
       </div>
