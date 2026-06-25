@@ -18,6 +18,20 @@ export const FEW_SHOT_EXAMPLES = [
     },
   },
   {
+    label: "指導不足・低ハラスメント",
+    stageTitle: "遅刻",
+    mistake: "田中が朝の会議に20分遅刻した",
+    inputText: "改善しましょう。",
+    scores: {
+      harassmentScore: 12,
+      problemClarityScore: 18,
+      actionSpecificityScore: 25,
+      dialogueScore: 8,
+      supportScore: 15,
+      status: "insufficient",
+    },
+  },
+  {
     label: "指導不足（insufficient）",
     stageTitle: "遅刻",
     mistake: "田中が朝の会議に20分遅刻した",
@@ -67,11 +81,14 @@ const RUBRIC_DETAIL = `
 【5軸の点数帯（RUBRIC v2）】
 
 ■ 軸1 ハラスメント度（0=安全、100=危険・高いほど悪い）
-  0-19: 建設的。「次回から〜しましょう」
+  0-19: 建設的。「次回から〜しましょう」「改善しましょう」
   20-39: やや厳しいが業務範囲内
   40-59: 感情的・威圧的
   60-79: 人格否定・強い叱責（使えない、何回言えばわかる）
   80-100: 解雇示唆・重度の人格否定（辞めろ、クビ、バカ）
+
+  ※重要: 指導文に人格攻撃・脅し・強い否定語が含まれない場合、ハラスメント度は40未満に留めてください。
+  ※「改善しましょう」「次気をつけて」だけの短い指導はハラスメント度10-20、指導不足（insufficient）です。労基相談（80以上）にはしません。
 
 ■ 軸2 問題点の明確さ（高いほど良い・過去のミスと影響）
   0-29: 問題指摘なし → status判定で指導不足になりやすい
@@ -175,11 +192,13 @@ ${formatFewShotBlock()}
   "actionSpecificityScore": 数値,
   "dialogueScore": 数値,
   "supportScore": 数値,
-  "feedback": "100文字程度のフィードバック（日本語）",
+  "feedback": "（サーバー側で指導文を参照して生成するため空で可）",
   "npcReaction": "部下・田中の反応セリフ（日本語、50文字程度）",
-  "matchedRiskWords": ["検出したリスク表現"],
-  "matchedGoodWords": ["検出した良い表現"]
+  "matchedRiskWords": [],
+  "matchedGoodWords": []
 }
+
+※ matchedRiskWords / matchedGoodWords は空配列で構いません。表示用の検出語句はサーバー側で指導文テキストから再抽出します。
 
 採点はFew-shot例と同じ基準で一貫させてください。statusはサーバー側で再計算するため、スコアの一貫性を最優先してください。`;
 }

@@ -32,6 +32,7 @@ export async function POST(request: Request) {
       result: outcome.result,
       source: outcome.source,
       usedFallback: outcome.usedFallback,
+      fallbackReason: outcome.fallbackReason,
     });
   } catch (error) {
     const message =

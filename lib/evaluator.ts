@@ -19,10 +19,40 @@ import {
   buildInstantHarassmentResult,
   findInstantHarassmentWords,
 } from "@/lib/instant-harassment";
+import { buildGuidanceAnalysisFeedback } from "@/lib/guidance-feedback";
 import type { EvaluationResult } from "@/types/game";
 
 function findMatchedWords(text: string, words: string[]): string[] {
   return words.filter((word) => text.includes(word));
+}
+
+/** キーワードベースのハラスメント度と検出語（AI判定の校正用） */
+export function getHarassmentBaseline(inputText: string): {
+  score: number;
+  matchedRiskWords: string[];
+  matchedGoodWords: string[];
+} {
+  const text = inputText.trim();
+  const instantWords = findInstantHarassmentWords(text);
+  if (instantWords.length > 0) {
+    return {
+      score: 100,
+      matchedRiskWords: instantWords,
+      matchedGoodWords: [],
+    };
+  }
+
+  const { score, matchedRiskWords, matchedGoodWords } = calcHarassmentScore(text);
+  return { score, matchedRiskWords, matchedGoodWords };
+}
+
+/** 指導文に実際に含まれるリスク/良い表現を抽出（表示用・AI/キーワード共通） */
+export function getMatchedWordsForDisplay(inputText: string): {
+  matchedRiskWords: string[];
+  matchedGoodWords: string[];
+} {
+  const { matchedRiskWords, matchedGoodWords } = getHarassmentBaseline(inputText);
+  return { matchedRiskWords, matchedGoodWords };
 }
 
 function calcHarassmentScore(text: string): {
@@ -107,13 +137,17 @@ export function evaluateGuidance(inputText: string): EvaluationResult {
 
   const instantWords = findInstantHarassmentWords(text);
   if (instantWords.length > 0) {
-    return buildInstantHarassmentResult(instantWords);
+    const result = buildInstantHarassmentResult(instantWords);
+    return {
+      ...result,
+      feedback: buildGuidanceAnalysisFeedback(text, result),
+    };
   }
 
   const { score: harassmentScore, matchedRiskWords, matchedGoodWords } =
     calcHarassmentScore(text);
 
-  return buildEvaluationResult({
+  const result = buildEvaluationResult({
     harassmentScore,
     problemClarityScore: calcProblemClarityScore(text),
     actionSpecificityScore: calcActionSpecificityScore(text),
@@ -122,6 +156,11 @@ export function evaluateGuidance(inputText: string): EvaluationResult {
     matchedRiskWords,
     matchedGoodWords,
   });
+
+  return {
+    ...result,
+    feedback: buildGuidanceAnalysisFeedback(text, result),
+  };
 }
 
 export { calculateBossRank, getStatusLabel };

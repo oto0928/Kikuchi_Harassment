@@ -59,6 +59,7 @@ export default function GamePage() {
   const [lastEvaluatorSource, setLastEvaluatorSource] =
     useState<EvaluatorMode>("keyword");
   const [usedLlmFallback, setUsedLlmFallback] = useState(false);
+  const [llmFallbackReason, setLlmFallbackReason] = useState<string | undefined>();
   const { unlock, playSe, startBgm, playEndingAudio } = useGameAudio();
 
   const clearedCount = history.filter((h) => h.result.status === "clear").length;
@@ -103,6 +104,7 @@ export default function GamePage() {
     setShowMentalBreakdownFlash(false);
     setInputError("");
     setUsedLlmFallback(false);
+    setLlmFallbackReason(undefined);
     persistStageReached(1);
   }, []);
 
@@ -260,6 +262,7 @@ export default function GamePage() {
         result: EvaluationResult;
         source: EvaluatorMode;
         usedFallback?: boolean;
+        fallbackReason?: string;
       }> => {
         if (evaluatorMode === "llm") {
           const res = await fetch("/api/evaluate", {
@@ -275,6 +278,7 @@ export default function GamePage() {
             result?: EvaluationResult;
             source?: EvaluatorMode;
             usedFallback?: boolean;
+            fallbackReason?: string;
             error?: string;
           };
 
@@ -286,16 +290,17 @@ export default function GamePage() {
             result: data.result,
             source: data.usedFallback ? "keyword" : (data.source ?? "llm"),
             usedFallback: data.usedFallback,
+            fallbackReason: data.fallbackReason,
           };
         }
 
         return { result: evaluateGuidance(trimmed), source: "keyword" };
       };
 
-      const { result, source, usedFallback } = await waitForEvaluation(
-        runEvaluation()
-      );
+      const { result, source, usedFallback, fallbackReason } =
+        await waitForEvaluation(runEvaluation());
       setUsedLlmFallback(Boolean(usedFallback));
+      setLlmFallbackReason(fallbackReason);
       applyResult(result, trimmed, source);
     } catch (error) {
       const message =
@@ -554,6 +559,7 @@ export default function GamePage() {
                   result={currentResult}
                   evaluatorSource={lastEvaluatorSource}
                   usedLlmFallback={usedLlmFallback}
+                  llmFallbackReason={llmFallbackReason}
                 />
                 <button
                   type="button"
@@ -596,6 +602,7 @@ export default function GamePage() {
                   result={currentResult}
                   evaluatorSource={lastEvaluatorSource}
                   usedLlmFallback={usedLlmFallback}
+                  llmFallbackReason={llmFallbackReason}
                 />
                 <FinalScreen
                   finalResult={finalResult}

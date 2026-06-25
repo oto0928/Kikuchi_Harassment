@@ -12,6 +12,7 @@ type ResultCardProps = {
   result: EvaluationResult;
   evaluatorSource?: "keyword" | "llm";
   usedLlmFallback?: boolean;
+  llmFallbackReason?: string;
 };
 
 function getStatusStyles(status: EvaluationResult["status"]) {
@@ -65,7 +66,23 @@ function getScoreValue(result: EvaluationResult, key: string): number {
   }
 }
 
-export default function ResultCard({ result, evaluatorSource, usedLlmFallback }: ResultCardProps) {
+function formatLlmFallbackMessage(reason?: string): string | undefined {
+  if (!reason) return undefined;
+  if (reason.includes("insufficient_quota") || reason.includes("429")) {
+    return "OpenAIの利用枠（クレジット）が不足しています。Billing設定を確認してください。";
+  }
+  if (reason.includes("401") || reason.includes("invalid_api_key")) {
+    return "APIキーが無効です。.env.local の OPENAI_API_KEY を確認してください。";
+  }
+  return undefined;
+}
+
+export default function ResultCard({
+  result,
+  evaluatorSource,
+  usedLlmFallback,
+  llmFallbackReason,
+}: ResultCardProps) {
   const reducedMotion = useReducedMotion() ?? false;
   const styles = getStatusStyles(result.status);
   const npcMood = getNpcMoodFromStatus(result.status);
@@ -179,7 +196,8 @@ export default function ResultCard({ result, evaluatorSource, usedLlmFallback }:
             {evaluatorSource === "llm"
               ? "AI判定（OpenAI）"
               : usedLlmFallback
-                ? "キーワード判定（AI失敗のため代替）"
+                ? formatLlmFallbackMessage(llmFallbackReason) ??
+                  "キーワード判定（AI失敗のため代替）"
                 : "キーワード判定"}
           </motion.p>
         )}
@@ -340,7 +358,7 @@ function TypewriterText({ text, delay }: { text: string; delay: number }) {
   }, [text, delay, reducedMotion]);
 
   return (
-    <p className="min-h-[3rem] text-base leading-relaxed text-gray-800">
+    <p className="min-h-[3rem] whitespace-pre-line text-base leading-relaxed text-gray-800">
       {displayed}
       {!reducedMotion && displayed.length < text.length && (
         <motion.span

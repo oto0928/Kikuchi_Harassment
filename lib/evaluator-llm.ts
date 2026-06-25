@@ -1,5 +1,9 @@
-import { evaluateGuidance } from "@/lib/evaluator";
-import { buildEvaluationResult, clamp } from "@/lib/evaluator-utils";
+import { evaluateGuidance, getHarassmentBaseline } from "@/lib/evaluator";
+import {
+  buildEvaluationResult,
+  clamp,
+  reconcileHarassmentScore,
+} from "@/lib/evaluator-utils";
 import {
   buildSystemPrompt,
   buildUserPrompt,
@@ -8,6 +12,7 @@ import {
   buildInstantHarassmentResult,
   findInstantHarassmentWords,
 } from "@/lib/instant-harassment";
+import { buildGuidanceAnalysisFeedback } from "@/lib/guidance-feedback";
 import type { EvaluationResult, EvaluatorMode, Stage } from "@/types/game";
 
 /** LLMが返すJSONの型（5軸） */
@@ -34,6 +39,7 @@ export type LlmEvaluateOutcome = {
   result: EvaluationResult;
   source: EvaluatorMode;
   usedFallback: boolean;
+  fallbackReason?: string;
 };
 
 const DEFAULT_OPTIONS: Required<LlmEvaluateOptions> = {
@@ -74,22 +80,37 @@ function parseLlmJson(content: string): LlmRawResponse {
   return parsed;
 }
 
-function rawToEvaluationResult(raw: LlmRawResponse): EvaluationResult {
+function rawToEvaluationResult(
+  raw: LlmRawResponse,
+  inputText: string
+): EvaluationResult {
+  const baseline = getHarassmentBaseline(inputText);
+  const { matchedRiskWords, matchedGoodWords } = baseline;
+
   return buildEvaluationResult({
-    harassmentScore: clamp(Number(raw.harassmentScore)),
+    harassmentScore: reconcileHarassmentScore(
+      Number(raw.harassmentScore),
+      baseline
+    ),
     problemClarityScore: clamp(Number(raw.problemClarityScore)),
     actionSpecificityScore: clamp(Number(raw.actionSpecificityScore)),
     dialogueScore: clamp(Number(raw.dialogueScore)),
     supportScore: clamp(Number(raw.supportScore)),
-    matchedRiskWords: Array.isArray(raw.matchedRiskWords)
-      ? raw.matchedRiskWords.map(String)
-      : [],
-    matchedGoodWords: Array.isArray(raw.matchedGoodWords)
-      ? raw.matchedGoodWords.map(String)
-      : [],
+    matchedRiskWords,
+    matchedGoodWords,
     feedback: String(raw.feedback),
     npcReaction: String(raw.npcReaction),
   });
+}
+
+function finalizeLlmResult(
+  result: EvaluationResult,
+  inputText: string
+): EvaluationResult {
+  return {
+    ...result,
+    feedback: buildGuidanceAnalysisFeedback(inputText.trim(), result),
+  };
 }
 
 async function callOpenAiApi(
@@ -136,7 +157,10 @@ async function callOpenAiApi(
     throw new Error("AIから応答が返ってきませんでした。");
   }
 
-  return rawToEvaluationResult(parseLlmJson(content));
+  return finalizeLlmResult(
+    rawToEvaluationResult(parseLlmJson(content), inputText),
+    inputText
+  );
 }
 
 /**
@@ -152,7 +176,11 @@ export async function evaluateGuidanceWithLLM(
 
   const instantWords = findInstantHarassmentWords(text);
   if (instantWords.length > 0) {
-    return buildInstantHarassmentResult(instantWords);
+    const result = buildInstantHarassmentResult(instantWords);
+    return {
+      ...result,
+      feedback: buildGuidanceAnalysisFeedback(text, result),
+    };
   }
 
   let lastError: unknown;
@@ -186,8 +214,12 @@ export async function evaluateGuidanceWithLLMSafe(
 
   const instantWords = findInstantHarassmentWords(text);
   if (instantWords.length > 0) {
+    const result = buildInstantHarassmentResult(instantWords);
     return {
-      result: buildInstantHarassmentResult(instantWords),
+      result: {
+        ...result,
+        feedback: buildGuidanceAnalysisFeedback(text, result),
+      },
       source: "llm",
       usedFallback: false,
     };
@@ -204,15 +236,19 @@ export async function evaluateGuidanceWithLLMSafe(
       throw error;
     }
 
+    const fallbackReason =
+      error instanceof Error ? error.message : "AI評価に失敗しました。";
+
     console.warn(
       "[evaluateGuidanceWithLLMSafe] LLM failed, falling back to keyword:",
-      error instanceof Error ? error.message : error
+      fallbackReason
     );
 
     return {
       result: evaluateGuidance(text),
       source: "keyword",
       usedFallback: true,
+      fallbackReason,
     };
   }
 }

@@ -5,6 +5,23 @@ export function clamp(value: number, min = 0, max = 100): number {
   return Math.round(Math.min(max, Math.max(min, value)));
 }
 
+/**
+ * AI判定のハラスメント度をキーワード基準と整合させる。
+ * 指導文にリスク表現が無いのに LLM が高得点を出す誤判定を防ぐ。
+ */
+export function reconcileHarassmentScore(
+  llmScore: number,
+  baseline: { score: number; matchedRiskWords: string[] }
+): number {
+  const llm = clamp(llmScore);
+
+  if (baseline.matchedRiskWords.length === 0) {
+    return Math.min(llm, baseline.score);
+  }
+
+  return Math.max(llm, baseline.score);
+}
+
 export function determineStatus(
   harassmentScore: number,
   problemClarityScore: number,

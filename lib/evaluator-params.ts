@@ -51,6 +51,7 @@ export const PERSONAL_ATTACK_WORDS = [
 export const STRONG_NEGATIVE_WORDS = [
   "使えない",
   "ふざけるな",
+  "ふざけんな",
   "何回言えばわかる",
   "やる気あるの",
   "迷惑",
