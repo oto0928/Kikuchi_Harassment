@@ -31,7 +31,6 @@ export function buildAccuracyReport(
   const axisErrors: Record<EvaluationAxis, number[]> = {
     harassmentScore: [],
     problemClarityScore: [],
-    actionSpecificityScore: [],
     dialogueScore: [],
     supportScore: [],
   };
@@ -110,10 +109,10 @@ export function printAccuracyReport(
         `[${m.id}] gold=${m.goldStatus} pred=${m.predStatus} pattern=${m.pattern}`
       );
       console.log(
-        `  gold: H=${m.gold.harassmentScore} PC=${m.gold.problemClarityScore} AS=${m.gold.actionSpecificityScore}`
+        `  gold: H=${m.gold.harassmentScore} PC=${m.gold.problemClarityScore}`
       );
       console.log(
-        `  pred: H=${m.pred.harassmentScore} PC=${m.pred.problemClarityScore} AS=${m.pred.actionSpecificityScore}`
+        `  pred: H=${m.pred.harassmentScore} PC=${m.pred.problemClarityScore}`
       );
     }
     if (report.mismatches.length > 30) {

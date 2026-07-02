@@ -51,7 +51,6 @@ const SCORE_ITEMS: Array<{
 }> = [
   { key: "harassment", label: "ハラスメント度", dangerMode: true },
   { key: "problemClarity", label: "問題点の明確さ", lowIsBad: true },
-  { key: "actionSpecificity", label: "改善行動の具体性", lowIsBad: true },
   { key: "dialogue", label: "対話・確認", lowIsBad: true },
   { key: "support", label: "支援・再発防止", lowIsBad: true },
 ];
@@ -62,8 +61,6 @@ function getScoreValue(result: EvaluationResult, key: string): number {
       return result.harassmentScore;
     case "problemClarity":
       return result.problemClarityScore;
-    case "actionSpecificity":
-      return result.actionSpecificityScore;
     case "dialogue":
       return result.dialogueScore;
     case "support":

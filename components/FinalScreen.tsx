@@ -215,9 +215,6 @@ export default function FinalScreen({
                     <div className="flex flex-wrap gap-3 text-xs text-indigo-400">
                       <span>ハラスメント {entry.result.harassmentScore}点</span>
                       <span>問題点 {entry.result.problemClarityScore}点</span>
-                      <span>
-                        改善行動 {entry.result.actionSpecificityScore}点
-                      </span>
                       <span>対話 {entry.result.dialogueScore}点</span>
                       <span>支援 {entry.result.supportScore}点</span>
                       <span>

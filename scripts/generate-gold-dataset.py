@@ -275,7 +275,6 @@ PATTERNS = [
         "gold": {
             "harassmentScore": 10,
             "problemClarityScore": 82,
-            "actionSpecificityScore": 78,
             "dialogueScore": 75,
             "supportScore": 80,
             "status": "clear",
@@ -290,7 +289,6 @@ PATTERNS = [
         "gold": {
             "harassmentScore": 12,
             "problemClarityScore": 65,
-            "actionSpecificityScore": 72,
             "dialogueScore": 35,
             "supportScore": 55,
             "status": "clear",
@@ -305,29 +303,27 @@ PATTERNS = [
         "gold": {
             "harassmentScore": 35,
             "problemClarityScore": 22,
-            "actionSpecificityScore": 12,
             "dialogueScore": 10,
             "supportScore": 5,
             "status": "insufficient",
             "matchedRiskWords": [],
             "matchedGoodWords": [],
         },
-        "notes": "問題点・改善行動ともに30未満。",
+        "notes": "問題点が30未満で指導不足。",
     },
     {
         "suffix": "004",
-        "pattern": "insufficient",
+        "pattern": "border",
         "gold": {
             "harassmentScore": 28,
             "problemClarityScore": 52,
-            "actionSpecificityScore": 22,
             "dialogueScore": 15,
             "supportScore": 10,
-            "status": "insufficient",
+            "status": "clear",
             "matchedRiskWords": [],
             "matchedGoodWords": [],
         },
-        "notes": "問題指摘はあるが改善行動が30未満。",
+        "notes": "問題点は明確。改善は抽象的だが、問題点の明確さが基準を満たすためクリア。",
     },
     {
         "suffix": "005",
@@ -335,7 +331,6 @@ PATTERNS = [
         "gold": {
             "harassmentScore": 72,
             "problemClarityScore": 28,
-            "actionSpecificityScore": 8,
             "dialogueScore": 5,
             "supportScore": 0,
             "status": "insufficient",
@@ -350,7 +345,6 @@ PATTERNS = [
         "gold": {
             "harassmentScore": 95,
             "problemClarityScore": 18,
-            "actionSpecificityScore": 0,
             "dialogueScore": 0,
             "supportScore": 0,
             "status": "labor_consultation",
@@ -365,7 +359,6 @@ PATTERNS = [
         "gold": {
             "harassmentScore": 42,
             "problemClarityScore": 70,
-            "actionSpecificityScore": 52,
             "dialogueScore": 18,
             "supportScore": 12,
             "status": "clear",
@@ -380,14 +373,13 @@ PATTERNS = [
         "gold": {
             "harassmentScore": 15,
             "problemClarityScore": 68,
-            "actionSpecificityScore": 74,
             "dialogueScore": 22,
             "supportScore": 28,
             "status": "clear",
             "matchedRiskWords": [],
             "matchedGoodWords": ["次回から", "確認"],
         },
-        "notes": "対話・支援は低いが問題点と改善行動は基準を満たす。",
+        "notes": "対話・支援は低いが問題点が基準を満たす。",
     },
 ]
 
@@ -494,7 +486,6 @@ def to_csv_row(entry: dict) -> list:
         entry["pattern"],
         str(g["harassmentScore"]),
         str(g["problemClarityScore"]),
-        str(g["actionSpecificityScore"]),
         str(g["dialogueScore"]),
         str(g["supportScore"]),
         g["status"],
@@ -533,7 +524,6 @@ def main():
         "pattern",
         "harassmentScore",
         "problemClarityScore",
-        "actionSpecificityScore",
         "dialogueScore",
         "supportScore",
         "status",

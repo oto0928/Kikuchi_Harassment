@@ -51,7 +51,6 @@ export type GameOverReason = "harassment" | "mental_breakdown" | null;
 export type EvaluationResult = {
   harassmentScore: number;
   problemClarityScore: number;
-  actionSpecificityScore: number;
   dialogueScore: number;
   supportScore: number;
   status: EvaluationStatus;

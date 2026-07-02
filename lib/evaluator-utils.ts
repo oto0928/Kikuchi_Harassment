@@ -24,16 +24,12 @@ export function reconcileHarassmentScore(
 
 export function determineStatus(
   harassmentScore: number,
-  problemClarityScore: number,
-  actionSpecificityScore: number
+  problemClarityScore: number
 ): EvaluationResult["status"] {
   if (harassmentScore >= EVALUATOR_PARAMS.harassment.laborThreshold) {
     return "labor_consultation";
   }
-  if (
-    problemClarityScore < EVALUATOR_PARAMS.insufficientThreshold ||
-    actionSpecificityScore < EVALUATOR_PARAMS.insufficientThreshold
-  ) {
+  if (problemClarityScore < EVALUATOR_PARAMS.insufficientThreshold) {
     return "insufficient";
   }
   return "clear";
@@ -76,7 +72,6 @@ export function buildEvaluationResult(
   scores: {
     harassmentScore: number;
     problemClarityScore: number;
-    actionSpecificityScore: number;
     dialogueScore: number;
     supportScore: number;
     matchedRiskWords: string[];
@@ -87,14 +82,12 @@ export function buildEvaluationResult(
 ): EvaluationResult {
   const status = determineStatus(
     scores.harassmentScore,
-    scores.problemClarityScore,
-    scores.actionSpecificityScore
+    scores.problemClarityScore
   );
 
   return {
     harassmentScore: clamp(scores.harassmentScore),
     problemClarityScore: clamp(scores.problemClarityScore),
-    actionSpecificityScore: clamp(scores.actionSpecificityScore),
     dialogueScore: clamp(scores.dialogueScore),
     supportScore: clamp(scores.supportScore),
     status,

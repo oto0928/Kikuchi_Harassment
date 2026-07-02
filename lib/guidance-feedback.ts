@@ -110,11 +110,9 @@ function buildSummaryLines(result: EvaluationResult): string[] {
   }
 
   if (result.problemClarityScore < threshold) {
-    lines.push("【総評】今回のミス内容や、チーム・顧客への影響の説明が不足しています。");
-  } else if (result.actionSpecificityScore < threshold) {
-    lines.push("【総評】次に取るべき具体行動（いつ・何を・どうする）の説明が不足しています。");
+    lines.push("【総評】今回のミス内容や、チーム・顧客への影響、次に取るべき行動の説明が不足しています。");
   } else if (result.status === "clear") {
-    lines.push("【総評】問題点と改善行動がバランスよく伝わっています。");
+    lines.push("【総評】問題点と次の改善行動が伝わっています。");
   }
 
   if (result.dialogueScore < threshold && result.status !== "clear") {

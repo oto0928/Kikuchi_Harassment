@@ -20,7 +20,7 @@ export function calcTanakaDelta(result: EvaluationResult): TanakaStatusDelta {
   switch (result.status) {
     case "clear":
       mentalHealth += 10 + Math.floor(result.dialogueScore / 15);
-      awarenessLevel += 12 + Math.floor(result.actionSpecificityScore / 12);
+      awarenessLevel += 12 + Math.floor(result.problemClarityScore / 12);
       break;
     case "insufficient":
       mentalHealth -= 15;

@@ -35,7 +35,6 @@ export function buildInstantHarassmentResult(
   return buildEvaluationResult({
     harassmentScore: 100,
     problemClarityScore: 0,
-    actionSpecificityScore: 0,
     dialogueScore: 0,
     supportScore: 0,
     matchedRiskWords: matchedWords,

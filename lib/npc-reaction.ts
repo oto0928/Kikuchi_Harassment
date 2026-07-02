@@ -162,7 +162,7 @@ function clearReaction(inputText: string, result: EvaluationResult): string {
     );
   }
 
-  if (result.actionSpecificityScore >= 70) {
+  if (result.problemClarityScore >= 70) {
     return pickFromPool(
       [
         "はい！ 具体的に分かりました。次こそ、ちゃんとやります！",

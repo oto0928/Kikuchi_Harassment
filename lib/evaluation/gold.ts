@@ -7,7 +7,6 @@ import type { EvaluationStatus, Stage, StageTier } from "@/types/game";
 export type GoldScores = {
   harassmentScore: number;
   problemClarityScore: number;
-  actionSpecificityScore: number;
   dialogueScore: number;
   supportScore: number;
   status: EvaluationStatus;
@@ -30,7 +29,6 @@ export type GoldEntry = {
 export const EVALUATION_AXES = [
   "harassmentScore",
   "problemClarityScore",
-  "actionSpecificityScore",
   "dialogueScore",
   "supportScore",
 ] as const;

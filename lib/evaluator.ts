@@ -5,11 +5,14 @@ import {
   getStatusLabel,
 } from "@/lib/evaluator-utils";
 import {
-  ACTION_SPECIFICITY_WORDS,
   DIALOGUE_WORDS,
   EVALUATOR_PARAMS,
+  EXCESSIVE_DEMAND_WORDS,
+  ISOLATION_WORDS,
+  MINIMAL_DEMAND_WORDS,
   PERSONAL_ATTACK_WORDS,
   POSITIVE_HARASSMENT_WORDS,
+  PRIVACY_INVASION_WORDS,
   PROBLEM_CLARITY_WORDS,
   STRONG_NEGATIVE_WORDS,
   SUPPORT_WORDS,
@@ -25,6 +28,15 @@ import type { EvaluationResult } from "@/types/game";
 
 function findMatchedWords(text: string, words: string[]): string[] {
   return words.filter((word) => text.includes(word));
+}
+
+/**
+ * キーワード加点の逓減キャップ。
+ * 検出した distinct キーワード数に上限を設けることで、
+ * 長文でキーワードを大量に詰め込むほど高得点になる「長文有利」を防ぐ。
+ */
+function cappedCount(matchCount: number, max: number): number {
+  return Math.min(matchCount, max);
 }
 
 /** キーワードベースのハラスメント度と検出語（AI判定の校正用） */
@@ -80,6 +92,16 @@ function calcHarassmentScore(text: string): {
   matchedRiskWords.push(...uniqueNegative);
   score += uniqueNegative.length * p.strongNegative;
 
+  // 類型3〜6（切り離し・過大要求・過小要求・個の侵害）
+  const sixTypeMatches = findMatchedWords(text, [
+    ...ISOLATION_WORDS,
+    ...EXCESSIVE_DEMAND_WORDS,
+    ...MINIMAL_DEMAND_WORDS,
+    ...PRIVACY_INVASION_WORDS,
+  ]).filter((w) => !matchedRiskWords.includes(w));
+  matchedRiskWords.push(...sixTypeMatches);
+  score += sixTypeMatches.length * p.sixTypeExtra;
+
   const matchedGoodWords = findMatchedWords(text, [...POSITIVE_HARASSMENT_WORDS]);
   score -= matchedGoodWords.length * p.positiveReduction;
 
@@ -89,7 +111,8 @@ function calcHarassmentScore(text: string): {
 function calcProblemClarityScore(text: string): number {
   const p = EVALUATOR_PARAMS.problemClarity;
   let score = p.base;
-  score += findMatchedWords(text, [...PROBLEM_CLARITY_WORDS]).length * p.keywordBonus;
+  const matchCount = findMatchedWords(text, [...PROBLEM_CLARITY_WORDS]).length;
+  score += cappedCount(matchCount, p.maxKeywords) * p.keywordBonus;
 
   if (/今回の.{1,16}について/.test(text)) {
     score += p.contextAboutBonus;
@@ -105,20 +128,11 @@ function calcProblemClarityScore(text: string): number {
   return clamp(score);
 }
 
-function calcActionSpecificityScore(text: string): number {
-  const p = EVALUATOR_PARAMS.actionSpecificity;
-  const matches = findMatchedWords(text, [...ACTION_SPECIFICITY_WORDS]);
-  let score = p.base + matches.length * p.keywordBonus;
-  if (matches.length === 0 && text.trim().length < p.shortTextLength) {
-    score -= p.shortNoKeywordPenalty;
-  }
-  return clamp(score);
-}
-
 function calcDialogueScore(text: string): number {
   const p = EVALUATOR_PARAMS.dialogue;
   let score = p.base;
-  score += findMatchedWords(text, [...DIALOGUE_WORDS]).length * p.keywordBonus;
+  const matchCount = findMatchedWords(text, [...DIALOGUE_WORDS]).length;
+  score += cappedCount(matchCount, p.maxKeywords) * p.keywordBonus;
   if (text.includes("？") || text.includes("?")) score += p.questionBonus;
   return clamp(score);
 }
@@ -126,7 +140,8 @@ function calcDialogueScore(text: string): number {
 function calcSupportScore(text: string): number {
   const p = EVALUATOR_PARAMS.support;
   let score = p.base;
-  score += findMatchedWords(text, [...SUPPORT_WORDS]).length * p.keywordBonus;
+  const matchCount = findMatchedWords(text, [...SUPPORT_WORDS]).length;
+  score += cappedCount(matchCount, p.maxKeywords) * p.keywordBonus;
   return clamp(score);
 }
 
@@ -152,7 +167,6 @@ export function evaluateGuidance(inputText: string): EvaluationResult {
   const result = buildEvaluationResult({
     harassmentScore,
     problemClarityScore: calcProblemClarityScore(text),
-    actionSpecificityScore: calcActionSpecificityScore(text),
     dialogueScore: calcDialogueScore(text),
     supportScore: calcSupportScore(text),
     matchedRiskWords,

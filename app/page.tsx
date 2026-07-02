@@ -12,6 +12,7 @@ import RoukiGameOverImage, {
 } from "@/components/RoukiGameOverImage";
 import ResultCard from "@/components/ResultCard";
 import StageCard from "@/components/StageCard";
+import GuidanceChoiceComposer from "@/components/GuidanceChoiceComposer";
 import TanakaStatusPanel from "@/components/TanakaStatusPanel";
 import T4ChaosEffects from "@/components/T4ChaosEffects";
 import T4StageIntro from "@/components/T4StageIntro";
@@ -60,6 +61,7 @@ export default function GamePage() {
   const [tanakaStatus, setTanakaStatus] = useState<TanakaStatus>(INITIAL_TANAKA_STATUS);
   const [lastTanakaDelta, setLastTanakaDelta] = useState<TanakaStatusDelta | null>(null);
   const [inputText, setInputText] = useState("");
+  const [inputMode, setInputMode] = useState<"free" | "choice">("free");
   const [currentResult, setCurrentResult] = useState<EvaluationResult | null>(null);
   const [history, setHistory] = useState<StageHistory[]>([]);
   const [phase, setPhase] = useState<GamePhase>("playing");
@@ -450,6 +452,12 @@ export default function GamePage() {
     setPhase("finished");
   }
 
+  /** 選択肢モードで組み立てた指導文を反映 */
+  const handleChoiceTextChange = useCallback((text: string) => {
+    setInputText(text);
+    setInputError("");
+  }, []);
+
   /** 菊池先生のお手本を入力欄に挿入 */
   function handleInsertKikuchiModel() {
     const text = getKikuchiModelGuidance(stageNumber);
@@ -551,7 +559,7 @@ export default function GamePage() {
                     <li>・ハラスメント度が80点以上 → 即ゲームオーバー</li>
                     <li>・田中のメンタルが0 → メンタル崩壊ゲームオーバー</li>
                     <li>
-                      ・問題点の明確さまたは改善行動の具体性が30点未満 → 指導不足（ステージ失敗）
+                      ・問題点の明確さが30点未満 → 指導不足（ステージ失敗）
                     </li>
                     <li>・田中の状態が悪いほど、ミスがエスカレートします</li>
                     <li>・全5ステージ完走でエンディングが表示されます</li>
@@ -624,6 +632,44 @@ export default function GamePage() {
                       )}
                     </div>
 
+                    {/* 入力方法の切り替え */}
+                    <div className="mb-4 border-2 border-indigo-500 bg-indigo-900 p-3">
+                      <p className="mb-2 text-xs font-black tracking-wider text-indigo-300">
+                        入力方法
+                      </p>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <button
+                          type="button"
+                          onClick={() => setInputMode("free")}
+                          aria-pressed={inputMode === "free"}
+                          className={`min-h-[44px] flex-1 border-2 px-3 py-2 text-sm font-bold ${
+                            inputMode === "free"
+                              ? "border-yellow-400 bg-yellow-400 text-indigo-900"
+                              : "border-indigo-600 bg-indigo-800 text-indigo-300 hover:border-indigo-400"
+                          }`}
+                        >
+                          自分で書く
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInputMode("choice")}
+                          aria-pressed={inputMode === "choice"}
+                          className={`min-h-[44px] flex-1 border-2 px-3 py-2 text-sm font-bold ${
+                            inputMode === "choice"
+                              ? "border-emerald-400 bg-emerald-500 text-white"
+                              : "border-indigo-600 bg-indigo-800 text-indigo-300 hover:border-indigo-400"
+                          }`}
+                        >
+                          選択肢から選ぶ（かんたん）
+                        </button>
+                      </div>
+                      {inputMode === "choice" && (
+                        <p className="mt-2 text-xs text-emerald-300">
+                          文章が思いつかなくても、パーツを選ぶだけで指導文を作れます
+                        </p>
+                      )}
+                    </div>
+
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                       <label
                         htmlFor="guidance-input"
@@ -634,7 +680,7 @@ export default function GamePage() {
                         </span>
                         あなたの指導文
                       </label>
-                      {hasKikuchiModelGuidance(stageNumber) && (
+                      {inputMode === "free" && hasKikuchiModelGuidance(stageNumber) && (
                         <button
                           type="button"
                           onClick={handleInsertKikuchiModel}
@@ -653,25 +699,36 @@ export default function GamePage() {
                         </button>
                       )}
                     </div>
-                    <textarea
-                      id="guidance-input"
-                      value={inputText}
-                      onChange={(e) => {
-                        setInputText(e.target.value);
-                        if (inputError) setInputError("");
-                      }}
-                      placeholder="例：今回の遅刻について、次回からは出発時間を15分早めに設定して、会議5分前には到着するようにしましょう。困ったら早めに連絡してください。"
-                      rows={5}
-                      className="w-full min-h-[120px] border-2 border-indigo-500 bg-white p-4 text-base text-gray-800 focus:border-yellow-400 focus:outline-none"
-                    />
+
+                    {inputMode === "free" ? (
+                      <>
+                        <textarea
+                          id="guidance-input"
+                          value={inputText}
+                          onChange={(e) => {
+                            setInputText(e.target.value);
+                            if (inputError) setInputError("");
+                          }}
+                          placeholder="例：今回の遅刻について、次回からは出発時間を15分早めに設定して、会議5分前には到着するようにしましょう。困ったら早めに連絡してください。"
+                          rows={5}
+                          className="w-full min-h-[120px] border-2 border-indigo-500 bg-white p-4 text-base text-gray-800 focus:border-yellow-400 focus:outline-none"
+                        />
+                        <p className="mt-1 text-right text-sm text-indigo-300">
+                          {inputText.length} 文字
+                        </p>
+                      </>
+                    ) : (
+                      <GuidanceChoiceComposer
+                        key={stageNumber}
+                        onTextChange={handleChoiceTextChange}
+                        onSelectSound={() => playSe("click")}
+                      />
+                    )}
                     {inputError && (
                       <p className="mt-2 text-sm font-bold text-red-400">
                         {inputError}
                       </p>
                     )}
-                    <p className="mt-1 text-right text-sm text-indigo-300">
-                      {inputText.length} 文字
-                    </p>
 
                     <button
                       type="button"

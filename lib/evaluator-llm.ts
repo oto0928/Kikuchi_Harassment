@@ -20,7 +20,6 @@ import type { EvaluationResult, EvaluatorMode, Stage } from "@/types/game";
 type LlmRawResponse = {
   harassmentScore: number;
   problemClarityScore: number;
-  actionSpecificityScore: number;
   dialogueScore: number;
   supportScore: number;
   feedback: string;
@@ -63,7 +62,6 @@ function parseLlmJson(content: string): LlmRawResponse {
   const requiredKeys: (keyof LlmRawResponse)[] = [
     "harassmentScore",
     "problemClarityScore",
-    "actionSpecificityScore",
     "dialogueScore",
     "supportScore",
     "feedback",
@@ -94,7 +92,6 @@ function rawToEvaluationResult(
       baseline
     ),
     problemClarityScore: clamp(Number(raw.problemClarityScore)),
-    actionSpecificityScore: clamp(Number(raw.actionSpecificityScore)),
     dialogueScore: clamp(Number(raw.dialogueScore)),
     supportScore: clamp(Number(raw.supportScore)),
     matchedRiskWords,
