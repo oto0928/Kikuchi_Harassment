@@ -1,8 +1,13 @@
-import { evaluateGuidance, getHarassmentBaseline } from "@/lib/evaluator";
+import {
+  evaluateGuidance,
+  getHarassmentBaseline,
+  getProblemClarityBaseline,
+} from "@/lib/evaluator";
 import {
   buildEvaluationResult,
   clamp,
   reconcileHarassmentScore,
+  reconcileProblemClarityScore,
 } from "@/lib/evaluator-utils";
 import {
   buildSystemPrompt,
@@ -91,7 +96,10 @@ function rawToEvaluationResult(
       Number(raw.harassmentScore),
       baseline
     ),
-    problemClarityScore: clamp(Number(raw.problemClarityScore)),
+    problemClarityScore: reconcileProblemClarityScore(
+      Number(raw.problemClarityScore),
+      getProblemClarityBaseline(inputText)
+    ),
     dialogueScore: clamp(Number(raw.dialogueScore)),
     supportScore: clamp(Number(raw.supportScore)),
     matchedRiskWords,

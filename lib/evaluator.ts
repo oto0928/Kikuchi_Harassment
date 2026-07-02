@@ -59,6 +59,11 @@ export function getHarassmentBaseline(inputText: string): {
   return { score, matchedRiskWords, matchedGoodWords };
 }
 
+/** キーワードベースの「問題点の明確さ」（AI判定の校正用） */
+export function getProblemClarityBaseline(inputText: string): number {
+  return calcProblemClarityScore(inputText.trim());
+}
+
 /** 指導文に実際に含まれるリスク/良い表現を抽出（表示用・AI/キーワード共通） */
 export function getMatchedWordsForDisplay(inputText: string): {
   matchedRiskWords: string[];

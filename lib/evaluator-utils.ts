@@ -22,6 +22,23 @@ export function reconcileHarassmentScore(
   return Math.max(llm, baseline.score);
 }
 
+/**
+ * AI判定の「問題点の明確さ」をキーワード基準と整合させる。
+ * 無関係・意味不明・極端に短い入力（キーワード基準で明確さがほぼ無い）に対し、
+ * LLM が高得点を出して不当にクリアになるのを防ぐ。
+ * キーワード基準が閾値未満のときは、その値＋わずかな上乗せまでしか認めない。
+ */
+export function reconcileProblemClarityScore(
+  llmScore: number,
+  keywordScore: number
+): number {
+  const llm = clamp(llmScore);
+  if (keywordScore < EVALUATOR_PARAMS.insufficientThreshold) {
+    return Math.min(llm, keywordScore + EVALUATOR_PARAMS.llmClarityMargin);
+  }
+  return llm;
+}
+
 export function determineStatus(
   harassmentScore: number,
   problemClarityScore: number

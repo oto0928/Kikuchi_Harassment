@@ -44,6 +44,8 @@ export const EVALUATOR_PARAMS = {
     maxKeywords: 6,
   },
   insufficientThreshold: 30,
+  /** AI判定の「問題点の明確さ」に許すキーワード基準からの上乗せ幅 */
+  llmClarityMargin: 20,
 } as const;
 
 // 類型2「精神的な攻撃」：脅迫・解雇示唆
