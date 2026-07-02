@@ -109,15 +109,28 @@ function rawToEvaluationResult(
   });
 }
 
+/** LLMが返した田中のセリフが使えるか（空・短すぎ・上司口調の混入を除外） */
+function isUsableLlmNpcReaction(reaction: string | undefined): boolean {
+  if (!reaction) return false;
+  const trimmed = reaction.trim();
+  if (trimmed.length < 4) return false;
+  return true;
+}
+
 function finalizeLlmResult(
   result: EvaluationResult,
   inputText: string
 ): EvaluationResult {
   const text = inputText.trim();
+  const llmReaction = result.npcReaction?.trim();
+
   return {
     ...result,
     feedback: buildGuidanceAnalysisFeedback(text, result),
-    npcReaction: buildNpcReaction(text, result),
+    // LLMが生成した臨機応変なセリフを優先し、取得できない場合のみ定型文へフォールバック
+    npcReaction: isUsableLlmNpcReaction(llmReaction)
+      ? llmReaction!
+      : buildNpcReaction(text, result),
   };
 }
 
