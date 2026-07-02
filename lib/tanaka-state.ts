@@ -12,50 +12,46 @@ export const INITIAL_TANAKA_STATUS: TanakaStatus = {
   awarenessLevel: 40,
 };
 
-/** 評価結果から田中ステータスの変化量を計算（5軸） */
+/**
+ * 評価結果（4つの診断パラメータ）から田中ステータスの変化量を計算する。
+ *
+ * 固定のステップ値ではなく、各パラメータのスコアに比例した連続的な増減にする
+ * ことで、指導の質に応じて上下の幅が出るようにしている。
+ *
+ * - 精神衛生度（気持ち）：対話・支援で癒え、ハラスメント（威圧・嫌味）で削られる
+ * - 意識改善レベル（納得・理解）：問題点の明確さ・支援で高まり、恐怖・萎縮で下がる
+ */
 export function calcTanakaDelta(result: EvaluationResult): TanakaStatusDelta {
-  let mentalHealth = 0;
-  let awarenessLevel = 0;
+  const h = result.harassmentScore;
+  const pc = result.problemClarityScore;
+  const dg = result.dialogueScore;
+  const sp = result.supportScore;
 
-  switch (result.status) {
-    case "clear":
-      mentalHealth += 10 + Math.floor(result.dialogueScore / 15);
-      awarenessLevel += 12 + Math.floor(result.problemClarityScore / 12);
-      break;
-    case "insufficient":
-      mentalHealth -= 15;
-      awarenessLevel -= 10;
-      break;
-    case "labor_consultation":
-      mentalHealth -= 50;
-      awarenessLevel -= 18;
-      break;
+  // --- 精神衛生度 ---
+  let mental = 0;
+  mental += (dg - 45) * 0.14; // 話を聞いてもらえた安心感（-6〜+7.7）
+  mental += (sp - 45) * 0.12; // 支援・フォローの安心感（-5.4〜+6.6）
+  mental += (pc - 50) * 0.04; // 何が問題か腑に落ちる（軽め）
+  mental += (25 - h) * 0.2; // 穏やかさ↔威圧の基本影響（h25で±0）
+  if (h >= 50) {
+    mental -= (h - 50) * 0.4; // 人格否定・強い叱責は追加で大きく削る
   }
 
-  if (result.harassmentScore >= 60) {
-    mentalHealth -= Math.floor((result.harassmentScore - 50) / 3);
-    awarenessLevel -= Math.floor((result.harassmentScore - 55) / 5);
-  } else if (result.harassmentScore >= 40) {
-    mentalHealth -= 8;
-    awarenessLevel -= 4;
-  } else if (result.harassmentScore < 25) {
-    mentalHealth += 8;
+  // --- 意識改善レベル ---
+  let awareness = 0;
+  awareness += (pc - 45) * 0.16; // 何が問題で何を直すか理解（-7.2〜+8.8）
+  awareness += (sp - 50) * 0.08; // 再発防止の仕組み
+  awareness += (dg - 50) * 0.05; // 双方向のやり取り
+  if (h >= 40) {
+    awareness -= (h - 40) * 0.25; // 恐怖・萎縮で自発的な改善意欲が削がれる
+  } else if (h < 25) {
+    awareness += 2; // 安心して受け止められる
   }
 
-  if (result.dialogueScore >= 60) {
-    mentalHealth += 8;
-  }
-
-  if (result.problemClarityScore >= 60) {
-    awarenessLevel += 8;
-  }
-
-  if (result.supportScore >= 50) {
-    mentalHealth += 6;
-    awarenessLevel += 6;
-  }
-
-  return { mentalHealth, awarenessLevel };
+  return {
+    mentalHealth: Math.round(mental),
+    awarenessLevel: Math.round(awareness),
+  };
 }
 
 /** ステータスを更新 */

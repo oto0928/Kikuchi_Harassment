@@ -87,7 +87,7 @@ export default function GuidanceChoiceComposer({
                       : "border-indigo-600 bg-indigo-800 text-indigo-100 hover:border-indigo-400"
                   }`}
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-start gap-2">
                     <span
                       className={`flex h-6 w-6 shrink-0 items-center justify-center border text-xs font-black ${
                         isActive
@@ -97,7 +97,7 @@ export default function GuidanceChoiceComposer({
                     >
                       {letter}
                     </span>
-                    <span>{option.label}</span>
+                    <span className="leading-relaxed">「{option.text}」</span>
                   </span>
                 </button>
               );
