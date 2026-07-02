@@ -138,6 +138,29 @@ function highHarassmentReaction(
   );
 }
 
+/** 指導になっていない・意味不明・無関係な入力かどうか */
+function isMeaninglessInput(result: EvaluationResult): boolean {
+  return (
+    result.matchedRiskWords.length === 0 &&
+    result.matchedGoodWords.length === 0 &&
+    result.problemClarityScore < 25 &&
+    result.dialogueScore < 30 &&
+    result.supportScore < 30
+  );
+}
+
+function meaninglessReaction(inputText: string): string {
+  return pickFromPool(
+    [
+      "え……？ 何言ってるんですか……？ 指導、されてない気がするんですけど……",
+      "……すみません、何の話ですか……？ どう返せばいいのか、分からなくて……",
+      "は、はい……？ それ、今のミスと関係あります……？ 何言ってるんですか……",
+      "えっと……ちょっと、意味が分からなくて……何を直せばいいんですか……？",
+    ],
+    inputText
+  );
+}
+
 function insufficientReaction(inputText: string): string {
   return pickFromPool(
     [
@@ -211,6 +234,10 @@ export function buildNpcReaction(
 
   if (result.harassmentScore >= 55 || severity === "mild") {
     return highHarassmentReaction(text, result.matchedRiskWords);
+  }
+
+  if (isMeaninglessInput(result)) {
+    return meaninglessReaction(text);
   }
 
   if (result.status === "insufficient") {
