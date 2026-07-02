@@ -2,6 +2,8 @@ import {
   evaluateGuidance,
   getHarassmentBaseline,
   getProblemClarityBaseline,
+  isLowSignalGuidance,
+  LOW_SIGNAL_SCORE_CAP,
 } from "@/lib/evaluator";
 import {
   buildEvaluationResult,
@@ -91,17 +93,24 @@ function rawToEvaluationResult(
   const baseline = getHarassmentBaseline(inputText);
   const { matchedRiskWords, matchedGoodWords } = baseline;
 
+  // 指導になっていない低シグナル入力は、AIが盛った各スコアを強制的に抑える
+  const lowSignal = isLowSignalGuidance(inputText);
+  const capIfLowSignal = (value: number): number =>
+    lowSignal ? Math.min(value, LOW_SIGNAL_SCORE_CAP) : value;
+
   return buildEvaluationResult({
     harassmentScore: reconcileHarassmentScore(
       Number(raw.harassmentScore),
       baseline
     ),
-    problemClarityScore: reconcileProblemClarityScore(
-      Number(raw.problemClarityScore),
-      getProblemClarityBaseline(inputText)
+    problemClarityScore: capIfLowSignal(
+      reconcileProblemClarityScore(
+        Number(raw.problemClarityScore),
+        getProblemClarityBaseline(inputText)
+      )
     ),
-    dialogueScore: clamp(Number(raw.dialogueScore)),
-    supportScore: clamp(Number(raw.supportScore)),
+    dialogueScore: capIfLowSignal(clamp(Number(raw.dialogueScore))),
+    supportScore: capIfLowSignal(clamp(Number(raw.supportScore))),
     matchedRiskWords,
     matchedGoodWords,
     feedback: String(raw.feedback),
@@ -124,13 +133,16 @@ function finalizeLlmResult(
   const text = inputText.trim();
   const llmReaction = result.npcReaction?.trim();
 
+  // 意味不明な低シグナル入力は、AIのセリフに関わらず「戸惑い」反応を強制する
+  const npcReaction =
+    isLowSignalGuidance(text) || !isUsableLlmNpcReaction(llmReaction)
+      ? buildNpcReaction(text, result)
+      : llmReaction!;
+
   return {
     ...result,
     feedback: buildGuidanceAnalysisFeedback(text, result),
-    // LLMが生成した臨機応変なセリフを優先し、取得できない場合のみ定型文へフォールバック
-    npcReaction: isUsableLlmNpcReaction(llmReaction)
-      ? llmReaction!
-      : buildNpcReaction(text, result),
+    npcReaction,
   };
 }
 

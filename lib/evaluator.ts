@@ -64,6 +64,43 @@ export function getProblemClarityBaseline(inputText: string): number {
   return calcProblemClarityScore(inputText.trim());
 }
 
+/** 低シグナル入力と判定されたときに各スコアへ課す上限 */
+export const LOW_SIGNAL_SCORE_CAP = 15;
+
+/**
+ * 指導として成立していない「低シグナル入力」かどうか。
+ * 評価対象の語句（リスク語・良い語・問題点/対話/支援キーワード）や
+ * 指導文特有のパターンを一切含まない場合、意味不明・無関係な入力とみなす。
+ * AIが空虚な入力に高スコアを付けてしまうのを防ぐために使う。
+ */
+export function isLowSignalGuidance(inputText: string): boolean {
+  const text = inputText.trim();
+  if (text.length === 0) return true;
+
+  const anyKeyword =
+    findMatchedWords(text, [
+      ...THREAT_WORDS,
+      ...PERSONAL_ATTACK_WORDS,
+      ...STRONG_NEGATIVE_WORDS,
+      ...ISOLATION_WORDS,
+      ...EXCESSIVE_DEMAND_WORDS,
+      ...MINIMAL_DEMAND_WORDS,
+      ...PRIVACY_INVASION_WORDS,
+      ...POSITIVE_HARASSMENT_WORDS,
+      ...PROBLEM_CLARITY_WORDS,
+      ...DIALOGUE_WORDS,
+      ...SUPPORT_WORDS,
+    ]).length > 0;
+
+  const hasGuidancePattern =
+    /今回の.{1,16}について/.test(text) ||
+    /問題です|問題があります/.test(text) ||
+    text.includes("？") ||
+    text.includes("?");
+
+  return !anyKeyword && !hasGuidancePattern;
+}
+
 /** 指導文に実際に含まれるリスク/良い表現を抽出（表示用・AI/キーワード共通） */
 export function getMatchedWordsForDisplay(inputText: string): {
   matchedRiskWords: string[];
