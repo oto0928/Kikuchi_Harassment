@@ -37,19 +37,19 @@ export const GUIDANCE_CHOICE_CATEGORIES: GuidanceChoiceCategory[] = [
     options: [
       {
         id: "problem_good",
-        label: "事実と影響を確認する",
+        label: "ミスの内容と影響を確認する",
         text: "今回のミスについて確認させてください。チームや業務に影響が出ています。",
         tone: "good",
       },
       {
         id: "problem_neutral",
-        label: "問題だと伝える",
+        label: "問題だと指摘する",
         text: "今回の件は問題だと思います。",
         tone: "neutral",
       },
       {
         id: "problem_bad",
-        label: "感情的に責める（NG）",
+        label: "強い言葉でとがめる",
         text: "何回言えばわかるんだ。こんなミスありえないだろう。",
         tone: "bad",
       },
@@ -68,13 +68,13 @@ export const GUIDANCE_CHOICE_CATEGORIES: GuidanceChoiceCategory[] = [
       },
       {
         id: "dialogue_neutral",
-        label: "軽くうながす",
+        label: "ひとことで済ませる",
         text: "次は気をつけてくれれば大丈夫です。",
         tone: "neutral",
       },
       {
         id: "dialogue_bad",
-        label: "話を聞かない（NG）",
+        label: "言い分を突っぱねる",
         text: "言い訳は聞きたくない。やる気あるのか。",
         tone: "bad",
       },
@@ -87,19 +87,19 @@ export const GUIDANCE_CHOICE_CATEGORIES: GuidanceChoiceCategory[] = [
     options: [
       {
         id: "action_good",
-        label: "具体的な手順を示す",
+        label: "手順と期限を具体的に示す",
         text: "次回からは、作業前にチェックリストで確認し、期限の前日までに報告する手順を徹底してください。",
         tone: "good",
       },
       {
         id: "action_neutral",
-        label: "抽象的に注意する",
+        label: "気をつけるよう伝える",
         text: "次はしっかり気をつけてください。",
         tone: "neutral",
       },
       {
         id: "action_bad",
-        label: "無理を強いる（NG）",
+        label: "終わるまでやらせる",
         text: "終わるまで帰るな。徹夜してでも終わらせろ。",
         tone: "bad",
       },
@@ -112,19 +112,19 @@ export const GUIDANCE_CHOICE_CATEGORIES: GuidanceChoiceCategory[] = [
     options: [
       {
         id: "support_good",
-        label: "相談と仕組みづくり",
+        label: "相談と再発防止を約束する",
         text: "困ったら早めに相談してください。一緒に再発防止の仕組みを作りましょう。",
         tone: "good",
       },
       {
         id: "support_neutral",
-        label: "軽く声かけ",
+        label: "声かけする",
         text: "何かあれば声をかけてください。",
         tone: "neutral",
       },
       {
         id: "support_bad",
-        label: "突き放す（NG）",
+        label: "自分で解決させる",
         text: "こんなの自分で何とかしろ。使えないな。",
         tone: "bad",
       },

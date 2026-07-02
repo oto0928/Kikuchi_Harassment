@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   GUIDANCE_CHOICE_CATEGORIES,
   buildGuidanceFromChoices,
-  type ChoiceTone,
+  type GuidanceChoiceOption,
   type GuidanceChoiceSelection,
 } from "@/lib/guidance-choices";
 
@@ -15,29 +15,17 @@ type Props = {
   onSelectSound?: () => void;
 };
 
-const TONE_STYLE: Record<
-  ChoiceTone,
-  { active: string; idle: string; badge: string; badgeLabel: string }
-> = {
-  good: {
-    active: "border-emerald-400 bg-emerald-500 text-white",
-    idle: "border-emerald-700 bg-indigo-900 text-emerald-200 hover:border-emerald-400",
-    badge: "border-emerald-400 text-emerald-300",
-    badgeLabel: "良い例",
-  },
-  neutral: {
-    active: "border-yellow-400 bg-yellow-400 text-indigo-900",
-    idle: "border-indigo-600 bg-indigo-900 text-indigo-200 hover:border-indigo-400",
-    badge: "border-indigo-400 text-indigo-300",
-    badgeLabel: "ふつう",
-  },
-  bad: {
-    active: "border-red-400 bg-red-500 text-white",
-    idle: "border-red-800 bg-indigo-900 text-red-200 hover:border-red-500",
-    badge: "border-red-400 text-red-300",
-    badgeLabel: "NG例",
-  },
-};
+const CHOICE_LETTERS = ["A", "B", "C", "D", "E"];
+
+/** 配列をシャッフルした新しい配列を返す（Fisher-Yates） */
+function shuffle<T>(items: readonly T[]): T[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 export default function GuidanceChoiceComposer({
   onTextChange,
@@ -45,18 +33,28 @@ export default function GuidanceChoiceComposer({
 }: Props) {
   const [selection, setSelection] = useState<GuidanceChoiceSelection>({});
 
+  // 良し悪しが位置で分からないよう、カテゴリごとに選択肢の順番をシャッフル（初回のみ）
+  const shuffledCategories = useMemo(
+    () =>
+      GUIDANCE_CHOICE_CATEGORIES.map((category) => ({
+        ...category,
+        options: shuffle(category.options),
+      })),
+    []
+  );
+
   const assembled = buildGuidanceFromChoices(selection);
 
   useEffect(() => {
     onTextChange(assembled);
   }, [assembled, onTextChange]);
 
-  function handleSelect(categoryId: string, optionId: string) {
+  function handleSelect(categoryId: string, option: GuidanceChoiceOption) {
     onSelectSound?.();
     setSelection((prev) => ({
       ...prev,
       // 同じものを再クリックで解除できる
-      [categoryId]: prev[categoryId] === optionId ? null : optionId,
+      [categoryId]: prev[categoryId] === option.id ? null : option.id,
     }));
   }
 
@@ -66,7 +64,7 @@ export default function GuidanceChoiceComposer({
         パーツを選ぶだけで指導文が組み立てられます。各項目から1つずつ選ぶのがおすすめです（もう一度押すと選択を解除できます）。
       </p>
 
-      {GUIDANCE_CHOICE_CATEGORIES.map((category) => (
+      {shuffledCategories.map((category) => (
         <div
           key={category.id}
           className="border-2 border-indigo-500 bg-indigo-900 p-3"
@@ -74,26 +72,30 @@ export default function GuidanceChoiceComposer({
           <p className="text-sm font-black text-yellow-300">{category.title}</p>
           <p className="mt-0.5 mb-2 text-xs text-indigo-300">{category.hint}</p>
           <div className="flex flex-col gap-2">
-            {category.options.map((option) => {
+            {category.options.map((option, index) => {
               const isActive = selection[category.id] === option.id;
-              const style = TONE_STYLE[option.tone];
+              const letter = CHOICE_LETTERS[index] ?? "?";
               return (
                 <button
                   key={option.id}
                   type="button"
-                  onClick={() => handleSelect(category.id, option.id)}
+                  onClick={() => handleSelect(category.id, option)}
                   aria-pressed={isActive}
                   className={`min-h-[44px] w-full border-2 px-3 py-2 text-left text-sm font-bold ${
-                    isActive ? style.active : style.idle
+                    isActive
+                      ? "border-yellow-400 bg-yellow-400 text-indigo-900"
+                      : "border-indigo-600 bg-indigo-800 text-indigo-100 hover:border-indigo-400"
                   }`}
                 >
                   <span className="flex items-center gap-2">
                     <span
-                      className={`shrink-0 border px-1 py-0.5 text-[10px] font-black ${
-                        isActive ? "border-white/70 text-white" : style.badge
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center border text-xs font-black ${
+                        isActive
+                          ? "border-indigo-900 text-indigo-900"
+                          : "border-indigo-400 text-indigo-300"
                       }`}
                     >
-                      {style.badgeLabel}
+                      {letter}
                     </span>
                     <span>{option.label}</span>
                   </span>
