@@ -31,6 +31,22 @@ function findMatchedWords(text: string, words: string[]): string[] {
 }
 
 /**
+ * 「ばかり」と誤爆しない「ばか」侮辱の検出。
+ * 単体の「ばか」や、文脈上明らかに侮辱として使われる形のみ拾う。
+ */
+function findBakaInsults(text: string): string[] {
+  if (/(?:^|[^り])ばか(?:$|[^り])/.test(text)) {
+    return ["ばか"];
+  }
+  return [];
+}
+
+/** パターン検出によるリスク語（キーワードリスト外の表記ゆれ） */
+function findPatternRiskWords(text: string): string[] {
+  return findBakaInsults(text);
+}
+
+/**
  * キーワード加点の逓減キャップ。
  * 検出した distinct キーワード数に上限を設けることで、
  * 長文でキーワードを大量に詰め込むほど高得点になる「長文有利」を防ぐ。
@@ -126,6 +142,12 @@ function calcHarassmentScore(text: string): {
   const attackMatches = findMatchedWords(text, [...PERSONAL_ATTACK_WORDS]);
   matchedRiskWords.push(...attackMatches);
   score += attackMatches.length * p.personalAttack;
+
+  const patternMatches = findPatternRiskWords(text).filter(
+    (w) => !matchedRiskWords.includes(w)
+  );
+  matchedRiskWords.push(...patternMatches);
+  score += patternMatches.length * p.personalAttack;
 
   const negativeMatches = findMatchedWords(text, [...STRONG_NEGATIVE_WORDS]);
   const uniqueNegative = negativeMatches.filter(

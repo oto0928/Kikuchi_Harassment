@@ -7,7 +7,9 @@ export function clamp(value: number, min = 0, max = 100): number {
 
 /**
  * AI判定のハラスメント度をキーワード基準と整合させる。
- * 指導文にリスク表現が無いのに LLM が高得点を出す誤判定を防ぐ。
+ * - キーワードでリスク語が検出された場合: LLMが低く出しても baseline 以上に引き上げる
+ * - キーワード未検出でも LLM が意味上の侮辱を検出（高スコア）した場合: LLM を信頼する
+ * - それ以外: LLM の過大評価を baseline で抑える
  */
 export function reconcileHarassmentScore(
   llmScore: number,
@@ -15,11 +17,15 @@ export function reconcileHarassmentScore(
 ): number {
   const llm = clamp(llmScore);
 
-  if (baseline.matchedRiskWords.length === 0) {
-    return Math.min(llm, baseline.score);
+  if (baseline.matchedRiskWords.length > 0) {
+    return Math.max(llm, baseline.score);
   }
 
-  return Math.max(llm, baseline.score);
+  if (llm >= EVALUATOR_PARAMS.llmHarassmentSemanticTrust) {
+    return llm;
+  }
+
+  return Math.min(llm, baseline.score);
 }
 
 /**

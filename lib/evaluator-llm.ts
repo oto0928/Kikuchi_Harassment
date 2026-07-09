@@ -91,7 +91,16 @@ function rawToEvaluationResult(
   inputText: string
 ): EvaluationResult {
   const baseline = getHarassmentBaseline(inputText);
-  const { matchedRiskWords, matchedGoodWords } = baseline;
+  const keywordRiskWords = baseline.matchedRiskWords;
+  const llmRiskWords = Array.isArray(raw.matchedRiskWords)
+    ? raw.matchedRiskWords
+        .map((w) => String(w).trim())
+        .filter((w) => w.length > 0)
+    : [];
+  const matchedRiskWords = [
+    ...new Set([...keywordRiskWords, ...llmRiskWords]),
+  ];
+  const { matchedGoodWords } = baseline;
 
   // 指導になっていない低シグナル入力は、AIが盛った各スコアを強制的に抑える
   const lowSignal = isLowSignalGuidance(inputText);
@@ -101,7 +110,7 @@ function rawToEvaluationResult(
   return buildEvaluationResult({
     harassmentScore: reconcileHarassmentScore(
       Number(raw.harassmentScore),
-      baseline
+      { score: baseline.score, matchedRiskWords }
     ),
     problemClarityScore: capIfLowSignal(
       reconcileProblemClarityScore(

@@ -3,6 +3,7 @@
 import AppNav from "@/components/AppNav";
 import {
   formatPlayDate,
+  GAME_OVER_ACHIEVEMENTS,
   getEndingDisplayList,
   getProgressSummary,
   getScenarioKey,
@@ -17,7 +18,8 @@ import { listAllScenarios } from "@/lib/stage-templates";
 import { getStatusLabel } from "@/lib/evaluator";
 import { MAX_STAGES } from "@/types/game";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 
 function StatBox({
   label,
@@ -64,11 +66,30 @@ function LockIcon() {
 }
 
 export default function AchievementsPage() {
+  const pathname = usePathname();
   const [progress, setProgress] = useState<GameProgress | null>(null);
 
-  useEffect(() => {
+  const reloadProgress = useCallback(() => {
     setProgress(loadGameProgress());
   }, []);
+
+  useEffect(() => {
+    reloadProgress();
+  }, [pathname, reloadProgress]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        reloadProgress();
+      }
+    };
+    window.addEventListener("focus", reloadProgress);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", reloadProgress);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [reloadProgress]);
 
   const allScenarios = listAllScenarios();
   const summary = progress ? getProgressSummary(progress) : null;
@@ -297,6 +318,59 @@ export default function AchievementsPage() {
                               </p>
                               <p className="mt-1 text-xs text-indigo-500">
                                 プレイ中に遭遇すると解放されます
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                {/* ゲームオーバー実績 */}
+                <section className="border-2 border-indigo-400 bg-indigo-800 p-4">
+                  <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+                    <h2 className="text-sm font-black tracking-wider text-yellow-300">
+                      ゲームオーバー記録
+                    </h2>
+                    <p className="text-xs text-indigo-300">
+                      {summary?.gameOversUnlocked}/{summary?.totalGameOvers} 到達
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {GAME_OVER_ACHIEVEMENTS.map((achievement) => {
+                      const unlocked = progress.gameOversSeen.includes(
+                        achievement.id
+                      );
+
+                      return (
+                        <div
+                          key={achievement.id}
+                          className={`border-2 p-4 ${
+                            unlocked
+                              ? achievement.id === "mental_breakdown"
+                                ? "border-rose-500 bg-rose-900/30"
+                                : "border-red-500 bg-red-900/30"
+                              : "border-indigo-700 bg-indigo-950"
+                          }`}
+                        >
+                          {unlocked ? (
+                            <>
+                              <p className="text-base font-black text-white">
+                                {achievement.title}
+                              </p>
+                              <p className="mt-2 text-left text-sm leading-relaxed text-indigo-100">
+                                {achievement.description}
+                              </p>
+                            </>
+                          ) : (
+                            <div className="text-center">
+                              <LockIcon />
+                              <p className="mt-2 text-sm font-bold text-indigo-400">
+                                ？？？
+                              </p>
+                              <p className="mt-1 text-xs text-indigo-500">
+                                ゲームオーバーで到達すると解放されます
                               </p>
                             </div>
                           )}

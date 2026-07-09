@@ -34,12 +34,38 @@ export type PlayRecord = {
   gameOverReason: GameOverReason;
 };
 
+/** ゲームオーバー系の実績（労基相談・メンタル崩壊） */
+export type GameOverAchievement = Exclude<GameOverReason, null>;
+
+export type GameOverAchievementInfo = {
+  id: GameOverAchievement;
+  title: string;
+  description: string;
+};
+
+export const GAME_OVER_ACHIEVEMENTS: GameOverAchievementInfo[] = [
+  {
+    id: "harassment",
+    title: "労基相談エンド",
+    description:
+      "ハラスメント度が80点を超え、田中が労基に相談する事態に。指導ではなく攻撃になっていないか見直そう。",
+  },
+  {
+    id: "mental_breakdown",
+    title: "メンタル崩壊エンド",
+    description:
+      "田中のメンタルが0になり、退職届が提出された。言葉の選び方と支援のバランスが重要だった。",
+  },
+];
+
 export type GameProgress = {
   version: typeof PROGRESS_VERSION;
   maxStageReached: number;
   stagesCleared: Partial<Record<number, boolean>>;
   scenarios: Record<ScenarioKey, ScenarioRecord>;
   endingsSeen: GameEnding[];
+  /** 到達したゲームオーバー実績 */
+  gameOversSeen: GameOverAchievement[];
   stats: {
     totalPlays: number;
     totalStageClears: number;
@@ -69,6 +95,7 @@ export function createEmptyProgress(): GameProgress {
     stagesCleared: {},
     scenarios: {},
     endingsSeen: [],
+    gameOversSeen: [],
     stats: {
       totalPlays: 0,
       totalStageClears: 0,
@@ -77,6 +104,29 @@ export function createEmptyProgress(): GameProgress {
       lowestAvgHarassment: null,
     },
     playHistory: [],
+  };
+}
+
+function migrateGameProgress(parsed: GameProgress): GameProgress {
+  const gameOversSeen = parsed.gameOversSeen ?? [];
+
+  // 旧セーブデータ: playHistory からゲームオーバー実績を復元
+  if (gameOversSeen.length === 0 && parsed.playHistory?.length) {
+    for (const play of parsed.playHistory) {
+      if (
+        play.gameOverReason === "harassment" ||
+        play.gameOverReason === "mental_breakdown"
+      ) {
+        if (!gameOversSeen.includes(play.gameOverReason)) {
+          gameOversSeen.push(play.gameOverReason);
+        }
+      }
+    }
+  }
+
+  return {
+    ...parsed,
+    gameOversSeen,
   };
 }
 
@@ -90,7 +140,7 @@ export function loadGameProgress(): GameProgress {
     if (!raw) return createEmptyProgress();
     const parsed = JSON.parse(raw) as GameProgress;
     if (parsed.version !== PROGRESS_VERSION) return createEmptyProgress();
-    return parsed;
+    return migrateGameProgress(parsed);
   } catch {
     return createEmptyProgress();
   }
@@ -195,6 +245,7 @@ export function recordPlayEnd(
     ...progress,
     stats: { ...progress.stats },
     endingsSeen: [...progress.endingsSeen],
+    gameOversSeen: [...(progress.gameOversSeen ?? [])],
     playHistory: [...progress.playHistory],
   };
 
@@ -204,7 +255,8 @@ export function recordPlayEnd(
     next.stats.totalFullClears += 1;
   }
 
-  if (finalResult) {
+  // 通常エンディングは5ステージ完走時のみ記録（ゲームオーバー時の仮エンディングは除外）
+  if (finalResult && !gameOverReason) {
     if (isBetterRank(next.stats.bestRank, finalResult.rank)) {
       next.stats.bestRank = finalResult.rank;
     }
@@ -218,6 +270,12 @@ export function recordPlayEnd(
 
     if (!next.endingsSeen.includes(finalResult.ending)) {
       next.endingsSeen.push(finalResult.ending);
+    }
+  }
+
+  if (gameOverReason === "harassment" || gameOverReason === "mental_breakdown") {
+    if (!next.gameOversSeen.includes(gameOverReason)) {
+      next.gameOversSeen.push(gameOverReason);
     }
   }
 
@@ -293,6 +351,8 @@ export function getProgressSummary(progress: GameProgress) {
     totalStages: MAX_STAGES,
     endingsUnlocked: progress.endingsSeen.length,
     totalEndings: 5,
+    gameOversUnlocked: progress.gameOversSeen?.length ?? 0,
+    totalGameOvers: GAME_OVER_ACHIEVEMENTS.length,
   };
 }
 
