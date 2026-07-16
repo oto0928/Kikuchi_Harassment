@@ -33,7 +33,6 @@ export type GameSession = {
   finalResult: FinalResult | null;
   gameOverReason: GameOverReason;
   inputError: string;
-  evaluatorMode: EvaluatorMode;
   lastEvaluatorSource: EvaluatorMode;
   usedLlmFallback: boolean;
   llmFallbackReason?: string;

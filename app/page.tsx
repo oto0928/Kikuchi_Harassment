@@ -19,7 +19,7 @@ import T4StageIntro from "@/components/T4StageIntro";
 import StageTransitionCutscene from "@/components/StageTransitionCutscene";
 import AppNav from "@/components/AppNav";
 import { useGameAudio } from "@/components/GameAudioProvider";
-import { calculateBossRank, evaluateGuidance } from "@/lib/evaluator";
+import { calculateBossRank } from "@/lib/evaluator";
 import { resolveEnding } from "@/lib/endings";
 import { persistPlayEnd, persistStageAttempt, persistStageReached } from "@/lib/game-progress";
 import {
@@ -68,8 +68,6 @@ export default function GamePage() {
   const [finalResult, setFinalResult] = useState<FinalResult | null>(null);
   const [gameOverReason, setGameOverReason] = useState<GameOverReason>(null);
   const [inputError, setInputError] = useState("");
-  const [evaluatorMode, setEvaluatorMode] = useState<EvaluatorMode>("keyword");
-  const [llmAvailable, setLlmAvailable] = useState(false);
   const [canProceed, setCanProceed] = useState(false);
   const [showRoukiFlash, setShowRoukiFlash] = useState(false);
   const [showMentalBreakdownFlash, setShowMentalBreakdownFlash] = useState(false);
@@ -144,7 +142,6 @@ export default function GamePage() {
       setFinalResult(saved.finalResult);
       setGameOverReason(saved.gameOverReason);
       setInputError(saved.inputError);
-      setEvaluatorMode(saved.evaluatorMode);
       setLastEvaluatorSource(saved.lastEvaluatorSource);
       setUsedLlmFallback(saved.usedLlmFallback);
       setLlmFallbackReason(saved.llmFallbackReason);
@@ -179,7 +176,6 @@ export default function GamePage() {
       finalResult,
       gameOverReason,
       inputError,
-      evaluatorMode,
       lastEvaluatorSource,
       usedLlmFallback,
       llmFallbackReason,
@@ -198,25 +194,11 @@ export default function GamePage() {
     finalResult,
     gameOverReason,
     inputError,
-    evaluatorMode,
     lastEvaluatorSource,
     usedLlmFallback,
     llmFallbackReason,
     showT4Intro,
   ]);
-
-  /** AI評価APIの利用可否を確認 */
-  useEffect(() => {
-    fetch("/api/evaluate")
-      .then((res) => res.json())
-      .then((data: { available: boolean }) => {
-        setLlmAvailable(data.available);
-        if (data.available && isFreshGameRef.current) {
-          setEvaluatorMode("llm");
-        }
-      })
-      .catch(() => setLlmAvailable(false));
-  }, []);
 
   /** 労基フラッシュを自動で消す */
   useEffect(() => {
@@ -367,37 +349,33 @@ export default function GamePage() {
         usedFallback?: boolean;
         fallbackReason?: string;
       }> => {
-        if (evaluatorMode === "llm") {
-          const res = await fetch("/api/evaluate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              inputText: trimmed,
-              stage: currentStage,
-            }),
-          });
+        const res = await fetch("/api/evaluate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            inputText: trimmed,
+            stage: currentStage,
+          }),
+        });
 
-          const data = (await res.json()) as {
-            result?: EvaluationResult;
-            source?: EvaluatorMode;
-            usedFallback?: boolean;
-            fallbackReason?: string;
-            error?: string;
-          };
+        const data = (await res.json()) as {
+          result?: EvaluationResult;
+          source?: EvaluatorMode;
+          usedFallback?: boolean;
+          fallbackReason?: string;
+          error?: string;
+        };
 
-          if (!res.ok || !data.result) {
-            throw new Error(data.error ?? "AI評価に失敗しました。");
-          }
-
-          return {
-            result: data.result,
-            source: data.usedFallback ? "keyword" : (data.source ?? "llm"),
-            usedFallback: data.usedFallback,
-            fallbackReason: data.fallbackReason,
-          };
+        if (!res.ok || !data.result) {
+          throw new Error(data.error ?? "AI評価に失敗しました。");
         }
 
-        return { result: evaluateGuidance(trimmed), source: "keyword" };
+        return {
+          result: data.result,
+          source: data.usedFallback ? "keyword" : (data.source ?? "llm"),
+          usedFallback: data.usedFallback,
+          fallbackReason: data.fallbackReason,
+        };
       };
 
       const { result, source, usedFallback, fallbackReason } =
@@ -555,11 +533,11 @@ export default function GamePage() {
                     あなたは上司役です。部下の田中が仕事でミスをした場面が表示されます。
                     ハラスメントにならない範囲で、具体的で改善につながる指導文を考えて入力してください。
                   </p>
-                  <ul className="mt-3 space-y-1 text-left text-sm text-indigo-200">
+                  <ul className="mt-3 space-y-1 text-left text-xs leading-relaxed text-indigo-200 md:text-sm md:leading-normal">
                     <li>・ハラスメント度が80点以上 → 即ゲームオーバー</li>
                     <li>・田中のメンタルが0 → メンタル崩壊ゲームオーバー</li>
                     <li>
-                      ・問題点の明確さが30点未満 → 指導不足（ステージ失敗）
+                      ・問題点の明確さが30点未満 → 指導不足
                     </li>
                     <li>・田中の状態が悪いほど、ミスがエスカレートします</li>
                     <li>・全5ステージ完走でエンディングが表示されます</li>
@@ -570,13 +548,16 @@ export default function GamePage() {
             {/* プレイ画面 */}
             {!isGameEnded && (phase === "playing" || phase === "evaluating") && (
               <>
-                <TanakaStatusPanel status={tanakaStatus} compact />
+                <TanakaStatusPanel
+                  status={tanakaStatus}
+                  compact
+                  tier={currentStage.tier}
+                />
 
                 <GameHud
                   currentStage={stageNumber}
                   totalStages={MAX_STAGES}
                   clearedCount={clearedCount}
-                  stageTitle={currentStage.title}
                   tier={currentStage.tier}
                 />
 
@@ -589,51 +570,8 @@ export default function GamePage() {
 
                 {phase === "playing" && (
                   <div className="mt-4 border-4 border-indigo-600 bg-indigo-800 p-4 sm:mt-6">
-                    <div className="mb-4 border-2 border-indigo-500 bg-indigo-900 p-3">
-                      <p className="mb-2 text-xs font-black tracking-wider text-indigo-300">
-                        評価モード
-                      </p>
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <button
-                          type="button"
-                          onClick={() => setEvaluatorMode("keyword")}
-                          className={`min-h-[44px] flex-1 border-2 px-3 py-2 text-sm font-bold ${
-                            evaluatorMode === "keyword"
-                              ? "border-yellow-400 bg-yellow-400 text-indigo-900"
-                              : "border-indigo-600 bg-indigo-800 text-indigo-300 hover:border-indigo-400"
-                          }`}
-                        >
-                          キーワード判定（オフライン）
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => llmAvailable && setEvaluatorMode("llm")}
-                          disabled={!llmAvailable}
-                          className={`min-h-[44px] flex-1 border-2 px-3 py-2 text-sm font-bold ${
-                            evaluatorMode === "llm"
-                              ? "border-emerald-400 bg-emerald-500 text-white"
-                              : llmAvailable
-                                ? "border-indigo-600 bg-indigo-800 text-indigo-300 hover:border-indigo-400"
-                                : "cursor-not-allowed border-indigo-700 bg-indigo-950 text-indigo-600"
-                          }`}
-                        >
-                          AI判定（OpenAI）
-                        </button>
-                      </div>
-                      {!llmAvailable && (
-                        <p className="mt-2 text-xs text-indigo-400">
-                          AI判定を使うには .env.local に OPENAI_API_KEY を設定してください
-                        </p>
-                      )}
-                      {evaluatorMode === "llm" && llmAvailable && (
-                        <p className="mt-2 text-xs text-emerald-400">
-                          OpenAI API で文脈を理解した分析を行います
-                        </p>
-                      )}
-                    </div>
-
-                    {/* 入力方法の切り替え */}
-                    <div className="mb-4 border-2 border-indigo-500 bg-indigo-900 p-3">
+                    {/* 入力方法の切り替え（デスクトップ: 従来のボタン） */}
+                    <div className="mb-4 hidden border-2 border-indigo-500 bg-indigo-900 p-3 md:block">
                       <p className="mb-2 text-xs font-black tracking-wider text-indigo-300">
                         入力方法
                       </p>
@@ -724,6 +662,7 @@ export default function GamePage() {
                         onSelectSound={() => playSe("click")}
                       />
                     )}
+
                     {inputError && (
                       <p className="mt-2 text-sm font-bold text-red-400">
                         {inputError}
@@ -750,13 +689,46 @@ export default function GamePage() {
                       </svg>
                       指導する
                     </button>
+
+                    {/* 入力方法の切り替え（スマホ: コンパクトなラジオ・指導ボタンの下） */}
+                    <div className="mt-3 border-2 border-indigo-500 bg-indigo-900 p-2 md:hidden">
+                      <fieldset>
+                        <legend className="mb-1.5 text-xs font-black tracking-wider text-indigo-300">
+                          入力方法
+                        </legend>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <label className="inline-flex min-h-[44px] cursor-pointer items-center gap-2 text-sm font-bold text-indigo-100">
+                            <input
+                              type="radio"
+                              name="inputMode"
+                              value="free"
+                              checked={inputMode === "free"}
+                              onChange={() => setInputMode("free")}
+                              className="h-4 w-4 shrink-0 accent-yellow-400"
+                            />
+                            自分で書く
+                          </label>
+                          <label className="inline-flex min-h-[44px] cursor-pointer items-center gap-2 text-sm font-bold text-indigo-100">
+                            <input
+                              type="radio"
+                              name="inputMode"
+                              value="choice"
+                              checked={inputMode === "choice"}
+                              onChange={() => setInputMode("choice")}
+                              className="h-4 w-4 shrink-0 accent-emerald-400"
+                            />
+                            選択肢（かんたん）
+                          </label>
+                        </div>
+                      </fieldset>
+                    </div>
                   </div>
                 )}
 
                 {phase === "evaluating" && (
                   <EvaluationOverlay
                     inputPreview={inputText.trim()}
-                    isLlm={evaluatorMode === "llm"}
+                    isLlm
                   />
                 )}
               </>
@@ -768,6 +740,7 @@ export default function GamePage() {
                 <TanakaStatusPanel
                   status={tanakaStatus}
                   delta={lastTanakaDelta}
+                  tier={currentStage.tier}
                 />
                 <ResultCard
                   result={currentResult}
@@ -812,6 +785,7 @@ export default function GamePage() {
                 <TanakaStatusPanel
                   status={tanakaStatus}
                   delta={lastTanakaDelta}
+                  tier={currentStage.tier}
                 />
                 <ResultCard
                   result={currentResult}

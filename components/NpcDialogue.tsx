@@ -24,31 +24,31 @@ const MOOD_STYLES: Record<
   normal: {
     bubble: "border-indigo-300 bg-white",
     label: "bg-indigo-600",
-    tail: "border-t-indigo-300 sm:border-r-indigo-300",
+    tail: "border-r-indigo-300",
     imageFilter: "",
   },
   worried: {
     bubble: "border-amber-400 bg-amber-50",
     label: "bg-amber-600",
-    tail: "border-t-amber-400 sm:border-r-amber-400",
+    tail: "border-r-amber-400",
     imageFilter: "",
   },
   happy: {
     bubble: "border-emerald-400 bg-emerald-50",
     label: "bg-emerald-600",
-    tail: "border-t-emerald-400 sm:border-r-emerald-400",
+    tail: "border-r-emerald-400",
     imageFilter: "brightness-105",
   },
   shocked: {
     bubble: "border-red-400 bg-red-50",
     label: "bg-red-600",
-    tail: "border-t-red-400 sm:border-r-red-400",
+    tail: "border-r-red-400",
     imageFilter: "brightness-95 saturate-90",
   },
   crying: {
     bubble: "border-red-500 bg-red-50",
     label: "bg-red-700",
-    tail: "border-t-red-500 sm:border-r-red-500",
+    tail: "border-r-red-500",
     imageFilter: "brightness-90 saturate-75",
   },
 };
@@ -84,9 +84,9 @@ export default function NpcDialogue({
   const showTearOverlay = isCrying && !chaosMode;
 
   return (
-    <div className="flex w-full flex-col items-center gap-3 sm:flex-row sm:items-end sm:gap-4">
+    <div className="flex w-full flex-row items-end gap-2 sm:gap-4">
       {/* キャラクター */}
-      <div className="relative shrink-0 sm:order-1">
+      <div className="relative shrink-0">
         <div
           className={`overflow-hidden border-4 ${
             chaosMode
@@ -103,7 +103,7 @@ export default function NpcDialogue({
             }
             width={chaosMode ? 512 : 160}
             height={chaosMode ? 431 : 200}
-            className={`h-[140px] w-[112px] sm:h-[180px] sm:w-[144px] ${
+            className={`h-[100px] w-[80px] sm:h-[180px] sm:w-[144px] ${
               chaosMode
                 ? "object-cover object-[center_20%]"
                 : `object-cover object-top ${styles.imageFilter}`
@@ -124,26 +124,20 @@ export default function NpcDialogue({
       </div>
 
       {/* 吹き出し */}
-      <div className="relative flex-1 sm:order-2">
-        {/* モバイル：下向きしっぽ */}
+      <div className="relative min-w-0 flex-1">
         <div
-          className={`absolute -bottom-2 left-1/2 h-0 w-0 -translate-x-1/2 border-x-[10px] border-t-[12px] border-x-transparent sm:hidden ${styles.tail.split(" ")[0]}`}
-          aria-hidden="true"
-        />
-        {/* デスクトップ：左向きしっぽ */}
-        <div
-          className={`absolute -left-2 bottom-6 hidden h-0 w-0 border-y-[10px] border-r-[12px] border-y-transparent sm:block ${styles.tail.split(" ")[1]}`}
+          className={`absolute -left-2 bottom-4 h-0 w-0 border-y-[8px] border-r-[10px] border-y-transparent sm:bottom-6 sm:border-y-[10px] sm:border-r-[12px] ${styles.tail}`}
           aria-hidden="true"
         />
 
-        <div className={`relative border-4 p-4 sm:p-5 ${styles.bubble}`}>
+        <div className={`relative border-4 p-3 sm:p-5 ${styles.bubble}`}>
           <span
-            className={`mb-2 inline-block px-2 py-0.5 text-xs font-bold text-white ${styles.label}`}
+            className={`mb-1 inline-block px-2 py-0.5 text-xs font-bold text-white sm:mb-2 ${styles.label}`}
           >
             {speakerLabel}
           </span>
           <p
-            className={`text-base leading-relaxed sm:text-lg ${
+            className={`text-sm leading-relaxed sm:text-lg ${
               isCrying ? "font-bold text-red-900" : "text-gray-800"
             }`}
           >

@@ -55,21 +55,12 @@ export default function StageCard({
           )}
         </div>
         <p
-          className={`text-base leading-relaxed sm:text-lg ${
-            isChaos ? "font-bold text-orange-50" : "text-white"
+          className={`text-base font-bold leading-relaxed sm:text-lg ${
+            isChaos ? "text-orange-50" : "text-white"
           }`}
         >
           {stage.mistake}
         </p>
-        {stage.contextNote && (
-          <p
-            className={`mt-2 text-xs ${
-              isChaos ? "text-orange-300/80" : "text-gray-400"
-            }`}
-          >
-            {stage.contextNote}
-          </p>
-        )}
       </div>
 
       {/* 部下キャラ + 吹き出し */}

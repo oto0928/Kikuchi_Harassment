@@ -1,16 +1,13 @@
 import ScoreBar from "@/components/ScoreBar";
-import {
-  getAwarenessLabel,
-  getMentalHealthLabel,
-  getMoodFromTanaka,
-} from "@/lib/stage-generator";
+import { TIER_LABELS } from "@/lib/stage-templates";
 import { getMentalHealthWarning } from "@/lib/tanaka-state";
-import type { TanakaStatus, TanakaStatusDelta } from "@/types/game";
+import type { StageTier, TanakaStatus, TanakaStatusDelta } from "@/types/game";
 
 type TanakaStatusPanelProps = {
   status: TanakaStatus;
   delta?: TanakaStatusDelta | null;
   compact?: boolean;
+  tier?: StageTier;
 };
 
 function DeltaBadge({ value }: { value: number }) {
@@ -30,9 +27,9 @@ export default function TanakaStatusPanel({
   status,
   delta,
   compact = false,
+  tier,
 }: TanakaStatusPanelProps) {
   const warning = getMentalHealthWarning(status.mentalHealth);
-  const mood = getMoodFromTanaka(status);
   const shouldAnimate = Boolean(delta);
   const prevMental = delta
     ? status.mentalHealth - delta.mentalHealth
@@ -40,13 +37,7 @@ export default function TanakaStatusPanel({
   const prevAwareness = delta
     ? status.awarenessLevel - delta.awarenessLevel
     : status.awarenessLevel;
-
-  const moodLabel = {
-    normal: "普通",
-    worried: "不安",
-    happy: "やる気",
-    shocked: "限界",
-  }[mood];
+  const isChaosTier = tier === "t4";
 
   return (
     <div
@@ -63,19 +54,15 @@ export default function TanakaStatusPanel({
             田中
           </span>
         </div>
-        <span
-          className={`text-xs font-bold ${
-            mood === "shocked"
-              ? "text-red-400"
-              : mood === "worried"
-                ? "text-amber-400"
-                : mood === "happy"
-                  ? "text-emerald-400"
-                  : "text-indigo-300"
-          }`}
-        >
-          状態: {moodLabel}
-        </span>
+        {tier && (
+          <span
+            className={`text-xs font-bold ${
+              isChaosTier ? "text-orange-300" : "text-indigo-300"
+            }`}
+          >
+            ティア: {TIER_LABELS[tier]}
+          </span>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -85,8 +72,8 @@ export default function TanakaStatusPanel({
               メンタル
               {delta && <DeltaBadge value={delta.mentalHealth} />}
             </span>
-            <span className="text-xs text-indigo-300">
-              {getMentalHealthLabel(status.mentalHealth)}
+            <span className="text-xs font-bold tabular-nums text-indigo-300">
+              {status.mentalHealth} / 100
             </span>
           </div>
           <ScoreBar
@@ -105,8 +92,8 @@ export default function TanakaStatusPanel({
               意識改善レベル
               {delta && <DeltaBadge value={delta.awarenessLevel} />}
             </span>
-            <span className="text-xs text-indigo-300">
-              {getAwarenessLabel(status.awarenessLevel)}
+            <span className="text-xs font-bold tabular-nums text-indigo-300">
+              {status.awarenessLevel} / 100
             </span>
           </div>
           <ScoreBar
